@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { startOfWeek, format, subWeeks } from 'date-fns';
+import { db } from './firebase';
+import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 export type User = {
   id: string;
@@ -83,31 +85,63 @@ export const getWeekKey = (date: Date) => {
   return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
 };
 
-const loadState = (): StoreState => {
-  const saved = localStorage.getItem('our-kitchen-state');
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      console.error("Failed to parse local state", e);
-    }
-  }
-  return {
-    users: DEFAULT_USERS,
-    menu: DEFAULT_MENU,
+export const StoreProvider = ({ children }: { children: ReactNode }) => {
+  const [state, setState] = useState<StoreState>({
+    users: [],
+    menu: [],
     calendar: {},
     rolloverPrompt: null,
-  };
-};
+  });
 
-export const StoreProvider = ({ children }: { children: ReactNode }) => {
-  const [state, setState] = useState<StoreState>(loadState());
+  const [loading, setLoading] = useState(true);
+
+  // Firestore listeners
+  useEffect(() => {
+    let inits = 0;
+    const checkInit = () => {
+      inits++;
+      if (inits >= 3) setLoading(false);
+    };
+
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+      if (snap.empty) {
+        DEFAULT_USERS.forEach(u => setDoc(doc(db, 'users', u.id), u));
+      } else {
+        const users = snap.docs.map(d => d.data() as User);
+        setState(s => ({ ...s, users }));
+      }
+      checkInit();
+    });
+
+    const unsubMenu = onSnapshot(collection(db, 'menu'), (snap) => {
+      if (snap.empty) {
+        DEFAULT_MENU.forEach(m => setDoc(doc(db, 'menu', m.id), m));
+      } else {
+        const menu = snap.docs.map(d => d.data() as MenuItem);
+        setState(s => ({ ...s, menu }));
+      }
+      checkInit();
+    });
+
+    const unsubCal = onSnapshot(collection(db, 'calendar'), (snap) => {
+      const calendar: CalendarData = {};
+      snap.docs.forEach(d => {
+        calendar[d.id] = d.data() as WeekData;
+      });
+      setState(s => ({ ...s, calendar }));
+      checkInit();
+    });
+
+    return () => {
+      unsubUsers();
+      unsubMenu();
+      unsubCal();
+    };
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('our-kitchen-state', JSON.stringify(state));
-  }, [state]);
-
-  useEffect(() => {
+    if (loading) return;
+    
     // Check for rollover on load
     const currentWeekKey = getWeekKey(new Date());
     if (!state.calendar[currentWeekKey] && state.rolloverPrompt?.weekKey !== currentWeekKey) {
@@ -117,45 +151,36 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         setState(s => ({ ...s, rolloverPrompt: { show: true, weekKey: currentWeekKey } }));
       } else {
         // First time ever using the app, just create empty week
-        setState(s => ({
-          ...s,
-          calendar: { ...s.calendar, [currentWeekKey]: emptyWeek() }
-        }));
+        setDoc(doc(db, 'calendar', currentWeekKey), emptyWeek());
       }
     }
-  }, [state.calendar, state.rolloverPrompt]);
+  }, [state.calendar, state.rolloverPrompt, loading]);
 
-  const addUser = (user: User) => {
-    setState(s => ({ ...s, users: [...s.users, user] }));
+  const addUser = async (user: User) => {
+    await setDoc(doc(db, 'users', user.id), user);
   };
 
-  const updateUser = (id: string, updates: Partial<User>) => {
-    setState(s => ({
-      ...s,
-      users: s.users.map(u => u.id === id ? { ...u, ...updates } : u)
-    }));
+  const updateUser = async (id: string, updates: Partial<User>) => {
+    await updateDoc(doc(db, 'users', id), updates);
   };
 
-  const removeUser = (id: string) => {
-    setState(s => ({ ...s, users: s.users.filter(u => u.id !== id) }));
+  const removeUser = async (id: string) => {
+    await deleteDoc(doc(db, 'users', id));
   };
 
-  const addMenuItem = (item: MenuItem) => {
-    setState(s => ({ ...s, menu: [...s.menu, item] }));
+  const addMenuItem = async (item: MenuItem) => {
+    await setDoc(doc(db, 'menu', item.id), item);
   };
 
-  const updateMenuItem = (id: string, updates: Partial<MenuItem>) => {
-    setState(s => ({
-      ...s,
-      menu: s.menu.map(m => m.id === id ? { ...m, ...updates } : m)
-    }));
+  const updateMenuItem = async (id: string, updates: Partial<MenuItem>) => {
+    await updateDoc(doc(db, 'menu', id), updates);
   };
 
-  const removeMenuItem = (id: string) => {
-    setState(s => ({ ...s, menu: s.menu.filter(m => m.id !== id) }));
+  const removeMenuItem = async (id: string) => {
+    await deleteDoc(doc(db, 'menu', id));
   };
 
-  const updateMeal = (weekKey: string, day: keyof WeekData, meal: keyof DayMeals, booking: Partial<MealBooking>) => {
+  const updateMeal = async (weekKey: string, day: keyof WeekData, meal: keyof DayMeals, booking: Partial<MealBooking>) => {
     setState(s => {
       const week = s.calendar[weekKey] || emptyWeek();
       const newWeek = {
@@ -165,28 +190,34 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
           [meal]: { ...week[day][meal], ...booking }
         }
       };
+      // Optimistically update local state so UI doesn't flicker, while writing to db
+      setDoc(doc(db, 'calendar', weekKey), newWeek);
       return { ...s, calendar: { ...s.calendar, [weekKey]: newWeek } };
     });
   };
 
-  const handleRollover = (action: 'copy' | 'fresh') => {
+  const handleRollover = async (action: 'copy' | 'fresh') => {
     if (!state.rolloverPrompt) return;
     
     const currentWeekKey = state.rolloverPrompt.weekKey;
     const previousWeekKey = getWeekKey(subWeeks(new Date(currentWeekKey), 1));
     
-    setState(s => {
-      let newCalendar = { ...s.calendar };
-      if (action === 'copy' && s.calendar[previousWeekKey]) {
-        // Deep copy the previous week but clear recipeIds if we wanted to just copy assignees? 
-        // User asked: "inherits the plans from last week, waiting to be further edited"
-        newCalendar[currentWeekKey] = JSON.parse(JSON.stringify(s.calendar[previousWeekKey]));
-      } else {
-        newCalendar[currentWeekKey] = emptyWeek();
-      }
-      return { ...s, calendar: newCalendar, rolloverPrompt: null };
-    });
+    let newWeek = emptyWeek();
+    if (action === 'copy' && state.calendar[previousWeekKey]) {
+      newWeek = JSON.parse(JSON.stringify(state.calendar[previousWeekKey]));
+    }
+    
+    await setDoc(doc(db, 'calendar', currentWeekKey), newWeek);
+    setState(s => ({ ...s, rolloverPrompt: null }));
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)]">
+        <div className="animate-pulse text-[var(--color-text-muted)]">Loading Kitchen...</div>
+      </div>
+    );
+  }
 
   return (
     <StoreContext.Provider value={{
