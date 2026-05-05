@@ -15,27 +15,27 @@ const AppContent = () => {
           <h1 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-color)' }}>
             <UtensilsCrossed /> Our Kitchen
           </h1>
-          <nav style={{ display: 'flex', gap: '0.5rem' }}>
+          <nav className="mobile-nav-container" style={{ display: 'flex', gap: '0.5rem' }}>
             <NavLink 
               to="/calendar" 
               className={({ isActive }) => `hover-lift ${isActive ? 'glass-panel' : ''}`}
               style={{ padding: '0.5rem 1rem', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, textDecoration: 'none', color: 'inherit' }}
             >
-              <Calendar size={18} /> <span className="hidden-mobile">Calendar</span>
+              <Calendar size={18} /> <span>Calendar</span>
             </NavLink>
             <NavLink 
               to="/family" 
               className={({ isActive }) => `hover-lift ${isActive ? 'glass-panel' : ''}`}
               style={{ padding: '0.5rem 1rem', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, textDecoration: 'none', color: 'inherit' }}
             >
-              <Users size={18} /> <span className="hidden-mobile">Family</span>
+              <Users size={18} /> <span>Family</span>
             </NavLink>
             <NavLink 
               to="/menu" 
               className={({ isActive }) => `hover-lift ${isActive ? 'glass-panel' : ''}`}
               style={{ padding: '0.5rem 1rem', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, textDecoration: 'none', color: 'inherit' }}
             >
-              <UtensilsCrossed size={18} /> <span className="hidden-mobile">Menu</span>
+              <UtensilsCrossed size={18} /> <span>Menu</span>
             </NavLink>
           </nav>
         </div>
@@ -49,6 +49,21 @@ const AppContent = () => {
           <Route path="/menu" element={<MenuView />} />
         </Routes>
       </main>
+
+      <nav className="bottom-nav">
+        <NavLink to="/calendar" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <Calendar size={22} />
+          <span>Calendar</span>
+        </NavLink>
+        <NavLink to="/family" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <Users size={22} />
+          <span>Family</span>
+        </NavLink>
+        <NavLink to="/menu" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <UtensilsCrossed size={22} />
+          <span>Menu</span>
+        </NavLink>
+      </nav>
     </>
   );
 };
