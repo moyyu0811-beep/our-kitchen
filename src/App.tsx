@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { CalendarView } from './components/CalendarView';
 import { FamilyView } from './components/FamilyView';
 import { MenuView } from './components/MenuView';
@@ -56,9 +56,9 @@ const AppContent = () => {
 function App() {
   return (
     <StoreProvider>
-      <BrowserRouter>
+      <HashRouter>
         <AppContent />
-      </BrowserRouter>
+      </HashRouter>
     </StoreProvider>
   );
 }
