@@ -111,6 +111,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         setState(s => ({ ...s, users }));
       }
       checkInit();
+    }, (error) => {
+      console.error("Users sync error:", error);
+      checkInit();
     });
 
     const unsubMenu = onSnapshot(collection(db, 'menu'), (snap) => {
@@ -121,6 +124,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         setState(s => ({ ...s, menu }));
       }
       checkInit();
+    }, (error) => {
+      console.error("Menu sync error:", error);
+      checkInit();
     });
 
     const unsubCal = onSnapshot(collection(db, 'calendar'), (snap) => {
@@ -129,6 +135,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         calendar[d.id] = d.data() as WeekData;
       });
       setState(s => ({ ...s, calendar }));
+      checkInit();
+    }, (error) => {
+      console.error("Calendar sync error:", error);
       checkInit();
     });
 
