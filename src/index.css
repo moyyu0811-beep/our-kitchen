@@ -199,3 +199,23 @@ button {
     display: none;
   }
 }
+
+/* Co-chef rainbow gradient — subtle Google AI palette */
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-cooked {
+  background: linear-gradient(
+    135deg,
+    rgba(66, 133, 244, 0.20) 0%,
+    rgba(155, 114, 217, 0.18) 33%,
+    rgba(52, 168, 143, 0.18) 66%,
+    rgba(234, 179, 8, 0.14) 100%
+  ) !important;
+  background-size: 200% 200% !important;
+  animation: gradientShift 6s ease infinite;
+  border: 1.5px solid rgba(155, 114, 217, 0.22) !important;
+}
