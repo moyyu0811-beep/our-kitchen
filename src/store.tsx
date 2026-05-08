@@ -105,6 +105,7 @@ type StoreContextType = StoreState & {
   removeGroceryItem: (id: string) => void;
   ranOutInventory: (item: InventoryItem) => void;
   clearPurchaseHistory: () => void;
+  deletePurchaseHistoryItem: (id: string) => void;
 };
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -333,6 +334,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const clearPurchaseHistory = async () => {
     state.purchaseHistory.forEach(h => deleteDoc(doc(db, 'purchase_history', h.id)));
   };
+  const deletePurchaseHistoryItem = async (id: string) => {
+    await deleteDoc(doc(db, 'purchase_history', id));
+  };
 
   if (loading) {
     return (
@@ -350,7 +354,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       addMenuItem, updateMenuItem, removeMenuItem,
       updateMeal, handleRollover,
       addGroceryItem, checkOffGrocery, removeGroceryItem,
-      ranOutInventory, clearPurchaseHistory,
+      ranOutInventory, clearPurchaseHistory, deletePurchaseHistoryItem,
     }}>
       {children}
     </StoreContext.Provider>

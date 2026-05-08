@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useStore, getWeekKey } from '../store';
 import type { WeekData, DayMeals } from '../store';
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
@@ -26,6 +26,13 @@ export const CalendarView = () => {
   const [activeMenuBlock, setActiveMenuBlock] = useState<{ dayIndex: number; meal: keyof DayMeals } | null>(null);
   const [coAssigneeBlock, setCoAssigneeBlock] = useState<{ dayIndex: number; meal: keyof DayMeals } | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Lock body scroll when any overlay is open
+  useEffect(() => {
+    const locked = !!(activeMenuBlock || coAssigneeBlock);
+    document.body.classList.toggle('scroll-locked', locked);
+    return () => document.body.classList.remove('scroll-locked');
+  }, [activeMenuBlock, coAssigneeBlock]);
 
   const weekKey = getWeekKey(currentDate);
   const weekData = calendar[weekKey] || {
