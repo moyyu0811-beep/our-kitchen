@@ -16,7 +16,7 @@ const useIsMobile = () => {
 };
 
 export const CalendarView = () => {
-  const { users, calendar, updateMeal, menu } = useStore();
+  const { users, calendar, updateMeal, menu, addMenuItem } = useStore();
   const isMobile = useIsMobile();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeDayIndex, setActiveDayIndex] = useState<number>(() => {
@@ -25,6 +25,7 @@ export const CalendarView = () => {
   });
   const [activeMenuBlock, setActiveMenuBlock] = useState<{ dayIndex: number; meal: keyof DayMeals } | null>(null);
   const [coAssigneeBlock, setCoAssigneeBlock] = useState<{ dayIndex: number; meal: keyof DayMeals } | null>(null);
+  const [customDish, setCustomDish] = useState('');
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Lock body scroll when any overlay is open
@@ -102,11 +103,23 @@ export const CalendarView = () => {
     if (!activeMenuBlock) return null;
     const booking = weekData[activeMenuBlock.dayIndex as keyof WeekData]?.[activeMenuBlock.meal] || { assigneeId: null, recipeIds: [] };
     const selectedIds = booking.recipeIds || [];
+    // Only show signature & wishlist (not history)
     const sections = [
       { key: 'signature', label: 'Signature', items: menu.filter(m => m.category === 'signature') },
       { key: 'wishlist', label: 'Wishlist', items: menu.filter(m => m.category === 'wishlist') },
-      { key: 'history', label: 'History', items: menu.filter(m => m.category === 'history') },
     ];
+
+    const addCustomDish = () => {
+      if (!customDish.trim() || !activeMenuBlock) return;
+      const customId = `custom-${Date.now()}`;
+      // Custom dishes go straight to history — they're one-offs
+      const newItem = { id: customId, name: customDish.trim(), category: 'history' as const };
+      addMenuItem(newItem);
+      const current = booking.recipeIds || [];
+      updateMeal(weekKey, activeMenuBlock.dayIndex as keyof WeekData, activeMenuBlock.meal, { recipeIds: [...current, customId] });
+      setCustomDish('');
+    };
+
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
         onClick={() => setActiveMenuBlock(null)}>
@@ -116,12 +129,29 @@ export const CalendarView = () => {
             <h3 style={{ fontSize: '1.4rem' }}>Select Dishes</h3>
             <button onClick={() => setActiveMenuBlock(null)} className="glass hover-lift" style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Tap dishes to toggle — multiple selections allowed</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>Tap dishes to toggle — multiple selections allowed</p>
           <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.25rem' }}>
-            <button onClick={() => updateMeal(weekKey, activeMenuBlock.dayIndex as keyof WeekData, activeMenuBlock.meal, { recipeIds: [] })}
-              className="hover-lift" style={{ width: '100%', background: 'transparent', color: 'var(--color-dine-out)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', textAlign: 'left', border: '2px dashed var(--border-color)', marginBottom: '1.5rem', fontWeight: 600 }}>
-              Clear All Dishes
-            </button>
+            {/* Customize: add a one-off dish */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customize</h4>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="text" value={customDish}
+                  onChange={e => setCustomDish(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addCustomDish()}
+                  placeholder="Type any dish name…"
+                  style={{
+                    flex: 1, padding: '0.6rem 0.75rem', borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.6)',
+                    fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none'
+                  }}
+                />
+                <button onClick={addCustomDish} className="hover-lift" style={{
+                  padding: '0.6rem 0.9rem', borderRadius: 'var(--radius-md)',
+                  background: 'var(--accent-color)', color: 'white', fontWeight: 700, flexShrink: 0
+                }}>+</button>
+              </div>
+            </div>
             {sections.map(({ key, label, items }) => items.length > 0 && (
               <div key={key} style={{ marginBottom: '1.5rem' }}>
                 <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</h4>
@@ -143,7 +173,24 @@ export const CalendarView = () => {
                 </div>
               </div>
             ))}
-            {menu.length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>Go to Menu tab to add dishes!</div>}
+            {menu.filter(m => m.category !== 'history').length === 0 && (
+              <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>Go to Menu tab to add dishes!</div>
+            )}
+            {/* Clear All — at the bottom */}
+            {selectedIds.length > 0 && (
+              <button
+                onClick={() => updateMeal(weekKey, activeMenuBlock.dayIndex as keyof WeekData, activeMenuBlock.meal, { recipeIds: [] })}
+                className="hover-lift"
+                style={{
+                  width: '100%', background: 'transparent', color: 'var(--text-muted)',
+                  padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', textAlign: 'center',
+                  border: '1px dashed var(--border-color)', marginTop: '0.5rem', fontWeight: 500,
+                  fontSize: '0.9rem',
+                }}
+              >
+                Clear all dishes
+              </button>
+            )}
           </div>
         </div>
       </div>

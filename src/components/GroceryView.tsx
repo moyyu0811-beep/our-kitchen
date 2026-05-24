@@ -1,16 +1,25 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import type { GroceryItem, InventoryItem } from '../store';
-import { ShoppingCart, Package, History, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Package, History, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 type Tab = 'shopping' | 'inventory' | 'history';
 
+const TAB_META = {
+  shopping:  { label: 'Shopping',  icon: <ShoppingCart size={16} />, desc: 'What we need to buy' },
+  inventory: { label: 'Inventory', icon: <Package size={16} />,      desc: 'Items we have at home' },
+  history:   { label: 'History',   icon: <History size={16} />,      desc: 'Everything we\'ve run out of' },
+} as const;
+
 export const GroceryView = () => {
-  const { groceryList, inventory, purchaseHistory, addGroceryItem, checkOffGrocery, removeGroceryItem, ranOutInventory, clearPurchaseHistory, deletePurchaseHistoryItem } = useStore();
+  const {
+    groceryList, inventory, purchaseHistory,
+    addGroceryItem, checkOffGrocery, removeGroceryItem,
+    ranOutInventory, clearPurchaseHistory, deletePurchaseHistoryItem,
+  } = useStore();
   const [tab, setTab] = useState<Tab>('shopping');
   const [input, setInput] = useState('');
-  // Track which items are in "checking off" animation state
   const [checking, setChecking] = useState<Set<string>>(new Set());
 
   const handleAdd = (e: React.FormEvent) => {
@@ -23,65 +32,74 @@ export const GroceryView = () => {
   const handleCheckOff = (item: GroceryItem) => {
     if (checking.has(item.id)) return;
     setChecking(prev => new Set(prev).add(item.id));
-    // Brief animation delay, then remove
     setTimeout(() => checkOffGrocery(item), 500);
   };
 
-  const tabs = [
-    { id: 'shopping' as Tab, label: 'Shopping', icon: <ShoppingCart size={16} />, count: groceryList.length },
-    { id: 'inventory' as Tab, label: 'Inventory', icon: <Package size={16} />, count: inventory.length },
-    { id: 'history' as Tab, label: 'History', icon: <History size={16} />, count: purchaseHistory.length },
-  ];
+  const counts: Record<Tab, number> = {
+    shopping: groceryList.length,
+    inventory: inventory.length,
+    history: purchaseHistory.length,
+  };
 
   return (
     <div className="container" style={{ padding: '2rem 1.5rem' }}>
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Grocery</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Shared across all family devices</p>
-      </div>
+      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '2rem', marginBottom: '1.25rem' }}>Grocery</h2>
 
-      {/* Tabs — single row, no wrapping */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className="hover-lift" style={{
-            display: 'flex', alignItems: 'center', gap: '0.4rem',
-            padding: '0.6rem 1rem', borderRadius: 'var(--radius-xl)',
-            background: tab === t.id ? 'var(--text-primary)' : 'var(--bg-card)',
-            color: tab === t.id ? 'white' : 'var(--text-primary)',
-            fontWeight: 600, border: '1px solid var(--border-color)',
-            transition: 'all 0.2s', whiteSpace: 'nowrap', fontSize: '0.9rem'
-          }}>
-            {t.icon} {t.label}
-            {t.count > 0 && (
-              <span style={{
-                background: tab === t.id ? 'rgba(255,255,255,0.25)' : 'var(--accent-color)',
-                color: 'white', borderRadius: '999px',
-                padding: '1px 7px', fontSize: '0.7rem', fontWeight: 700
-              }}>{t.count}</span>
-            )}
-          </button>
-        ))}
+        {/* Blog-style underline tabs with icons */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'nowrap' }}>
+          {(Object.keys(TAB_META) as Tab[]).map(t => {
+            const meta = TAB_META[t];
+            const isActive = tab === t;
+            return (
+              <button key={t} onClick={() => setTab(t)} style={{
+                background: 'none', border: 'none', padding: '0 0 0.35rem 0',
+                fontWeight: isActive ? 700 : 400,
+                fontSize: '1rem',
+                color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                borderBottom: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
+                cursor: 'pointer', transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                whiteSpace: 'nowrap',
+              }}>
+                {meta.icon} {meta.label}
+                {counts[t] > 0 && (
+                  <span style={{
+                    background: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                    color: 'white', borderRadius: '999px',
+                    padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700,
+                  }}>{counts[t]}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Description below tabs */}
+        <p style={{ marginTop: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          {TAB_META[tab].desc}
+        </p>
       </div>
 
       <div className="glass-panel" style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
 
-        {/* Shopping List */}
+        {/* ── Shopping List ── */}
         {tab === 'shopping' && (
           <>
             <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <input
                 type="text" value={input} onChange={e => setInput(e.target.value)}
-                placeholder="Add item to shopping list..."
+                placeholder="Add item to shopping list…"
                 style={{
                   flex: 1, padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.5)',
-                  fontSize: '1rem', fontFamily: 'inherit', outline: 'none'
+                  fontSize: '1rem', fontFamily: 'inherit', outline: 'none',
                 }}
               />
               <button type="submit" className="hover-lift active-scale" style={{
                 background: 'var(--accent-color)', color: 'white',
                 padding: '0 1.25rem', borderRadius: 'var(--radius-md)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}><Plus size={22} /></button>
             </form>
 
@@ -101,7 +119,6 @@ export const GroceryView = () => {
                       opacity: isChecking ? 0 : 1,
                       transform: isChecking ? 'translateX(20px)' : 'none',
                     }}>
-                      {/* Circle check button */}
                       <button
                         onClick={() => handleCheckOff(item)}
                         className={`grocery-check-btn ${isChecking ? 'checked' : ''}`}
@@ -123,12 +140,9 @@ export const GroceryView = () => {
           </>
         )}
 
-        {/* Inventory */}
+        {/* ── Inventory ── */}
         {tab === 'inventory' && (
           <>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-              Items you have at home. Click "Ran out!" when you've used the last of it.
-            </p>
             {inventory.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
                 No items yet. Check off items from your shopping list!
@@ -138,7 +152,7 @@ export const GroceryView = () => {
                 {inventory.map((item: InventoryItem) => (
                   <div key={item.id} className="glass" style={{
                     display: 'flex', alignItems: 'center', gap: '1rem',
-                    padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)'
+                    padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)',
                   }}>
                     <Package size={18} style={{ color: 'var(--accent-color)', flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
@@ -147,14 +161,15 @@ export const GroceryView = () => {
                         Purchased {format(new Date(item.purchasedAt), 'MMM d, yyyy')}
                       </div>
                     </div>
+                    {/* Blue "Used it up" with bowl emoji */}
                     <button onClick={() => ranOutInventory(item)} className="hover-lift active-scale" style={{
                       display: 'flex', alignItems: 'center', gap: '0.4rem',
                       padding: '0.4rem 0.75rem', borderRadius: 'var(--radius-md)',
-                      background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                      background: 'rgba(59,130,246,0.1)', color: '#2563eb',
                       fontWeight: 600, fontSize: '0.8rem',
-                      border: '1px solid rgba(239,68,68,0.2)', flexShrink: 0
+                      border: '1px solid rgba(59,130,246,0.25)', flexShrink: 0,
                     }}>
-                      <AlertTriangle size={14} /> Ran out!
+                      🥣 Used it up
                     </button>
                   </div>
                 ))}
@@ -163,18 +178,15 @@ export const GroceryView = () => {
           </>
         )}
 
-        {/* History */}
+        {/* ── Purchase History ── */}
         {tab === 'history' && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                A log of everything you've run out of.
-              </p>
+              <span />
               {purchaseHistory.length > 0 && (
                 <button onClick={clearPurchaseHistory} className="hover-lift" style={{
                   fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.3rem 0.6rem',
-                  border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)',
-                  flexShrink: 0, marginLeft: '1rem'
+                  border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', flexShrink: 0,
                 }}>Clear all</button>
               )}
             </div>
@@ -187,7 +199,7 @@ export const GroceryView = () => {
                 {purchaseHistory.map(item => (
                   <div key={item.id} className="glass" style={{
                     display: 'flex', alignItems: 'center', gap: '1rem',
-                    padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)'
+                    padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)',
                   }}>
                     <History size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>

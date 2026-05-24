@@ -4,8 +4,10 @@ import { FamilyView } from './components/FamilyView';
 import { MenuView } from './components/MenuView';
 import { GroceryView } from './components/GroceryView';
 import { RolloverPrompt } from './components/RolloverPrompt';
+import { AuthPage } from './components/AuthPage';
 import { Calendar, Users, UtensilsCrossed, ShoppingCart } from 'lucide-react';
 import { StoreProvider } from './store';
+import { AuthProvider, useAuth } from './auth';
 
 const NAV_ITEMS = [
   { to: '/family',   label: 'Family',   icon: <Users size={22} />,          iconSm: <Users size={18} /> },
@@ -15,8 +17,26 @@ const NAV_ITEMS = [
 ];
 
 const AppContent = () => {
+  const { firebaseUser, householdId, authLoading } = useAuth();
+
+  // Show nothing while checking auth state
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ fontSize: '2rem' }}>🍳</div>
+        <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Loading…</div>
+      </div>
+    );
+  }
+
+  // Not logged in → show auth page
+  if (!firebaseUser || !householdId) {
+    return <AuthPage />;
+  }
+
+  // Logged in → show main app inside StoreProvider scoped to household
   return (
-    <>
+    <StoreProvider householdId={householdId}>
       <RolloverPrompt />
       <header className="glass" style={{ position: 'sticky', top: 0, zIndex: 40, padding: '1rem 0' }}>
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -62,17 +82,17 @@ const AppContent = () => {
           </NavLink>
         ))}
       </nav>
-    </>
+    </StoreProvider>
   );
 };
 
 function App() {
   return (
-    <StoreProvider>
+    <AuthProvider>
       <HashRouter>
         <AppContent />
       </HashRouter>
-    </StoreProvider>
+    </AuthProvider>
   );
 }
 
