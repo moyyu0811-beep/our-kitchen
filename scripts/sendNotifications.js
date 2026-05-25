@@ -1,6 +1,5 @@
 const admin = require('firebase-admin');
 
-// Parse the service account from the environment variable
 const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
   ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
   : null;
@@ -17,13 +16,26 @@ admin.initializeApp({
 const db = admin.firestore();
 
 async function run() {
-  const isMorning = process.argv.includes('--morning');
-  const isEvening = process.argv.includes('--evening');
-  
-  if (!isMorning && !isEvening) {
-    console.error("Please specify --morning or --evening");
-    process.exit(1);
+  const now = new Date();
+  let utcHour = now.getUTCHours();
+  let utcMinute = now.getUTCMinutes();
+  let utcDay = now.getUTCDay();
+
+  // Round to nearest 30 minute interval to account for GitHub Actions scheduling delays
+  if (utcMinute < 15) {
+    utcMinute = 0;
+  } else if (utcMinute < 45) {
+    utcMinute = 30;
+  } else {
+    utcMinute = 0;
+    utcHour += 1;
+    if (utcHour >= 24) {
+      utcHour = 0;
+      utcDay = (utcDay + 1) % 7;
+    }
   }
+
+  console.log(`Checking rules for UTC time: Day ${utcDay}, ${utcHour}:${utcMinute === 0 ? '00' : '30'}`);
 
   const usersSnap = await db.collection('auth_users').get();
   
@@ -32,41 +44,42 @@ async function run() {
 
   for (const doc of usersSnap.docs) {
     const data = doc.data();
-    if (data.fcmToken) {
-      const prefs = data.pushPrefs || {};
+    if (data.fcmToken && data.pushPrefs && data.pushPrefs.rules) {
+      const rules = data.pushPrefs.rules;
       
-      let title = "Our Kitchen";
-      let body = "";
-      
-      if (isMorning && prefs.morning) {
-        body = prefs.morning.msg || "今天吃什么？";
-      } else if (isEvening && prefs.evening) {
-        body = prefs.evening.msg || "明天吃什么？";
-      }
-      
-      if (body) {
-        const message = {
-          notification: { title, body },
-          token: data.fcmToken,
-          webpush: {
-            fcmOptions: {
-              link: 'https://moyyu.github.io/our-kitchen/'
+      // Find rules that match the current UTC time block
+      const matchingRules = rules.filter(r => {
+        if (r.utcHour !== utcHour || r.utcMinute !== utcMinute) return false;
+        if (r.type === 'weekly' && r.utcDayOfWeek !== utcDay) return false;
+        return true;
+      });
+
+      for (const rule of matchingRules) {
+        if (rule.message) {
+          const message = {
+            notification: { title: "Our Kitchen", body: rule.message },
+            token: data.fcmToken,
+            webpush: {
+              fcmOptions: {
+                link: 'https://moyyu.github.io/our-kitchen/'
+              }
             }
+          };
+          
+          try {
+            await admin.messaging().send(message);
+            console.log(`Sent notification to ${doc.id} for rule ${rule.id}`);
+            successCount++;
+          } catch (error) {
+            console.error(`Failed to send to ${doc.id}:`, error.message);
+            failCount++;
           }
-        };
-        
-        try {
-          await admin.messaging().send(message);
-          successCount++;
-        } catch (error) {
-          console.error(`Failed to send to ${doc.id}:`, error.message);
-          failCount++;
         }
       }
     }
   }
   
-  console.log(`Sent ${successCount} notifications. Failed: ${failCount}`);
+  console.log(`Finished sending. Success: ${successCount}. Failed: ${failCount}`);
 }
 
 run().catch(console.error);

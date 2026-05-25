@@ -6,6 +6,7 @@ import { Plus, Trash2, Edit2, Copy, Check, LogOut, Bell } from 'lucide-react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import { db, messaging } from '../firebase';
+import { NotificationBuilder } from './NotificationBuilder';
 
 const PREDEFINED_COLORS = [
   'var(--color-coral)', 'var(--color-sunflower)', 'var(--color-mint)',
@@ -44,15 +45,15 @@ export const FamilyView = () => {
       } else {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-          // Fallback vapidKey if env variable not provided, though it will fail without a valid key.
-          const token = await getToken(messaging, { vapidKey: import.meta.env.VITE_VAPID_KEY });
+          // Explicitly register the SW for Firebase at the correct path
+          const swReg = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}firebase-messaging-sw.js`);
+          const token = await getToken(messaging, { 
+            serviceWorkerRegistration: swReg,
+            vapidKey: import.meta.env.VITE_VAPID_KEY 
+          });
           if (token) {
             await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
-              fcmToken: token,
-              pushPrefs: {
-                morning: { time: '08:30', msg: '今天吃什么？' },
-                evening: { time: '20:30', msg: '明天吃什么？' }
-              }
+              fcmToken: token
             });
             setPushEnabled(true);
           }
@@ -60,9 +61,9 @@ export const FamilyView = () => {
           alert('Notification permission denied. Please enable them in your device settings.');
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Failed to setup notifications. Are you running this as an installed PWA (Add to Home Screen)?');
+      alert(`Failed to setup notifications: ${e.message}\nMake sure you are running this as an installed PWA (Add to Home Screen) and have provided a VAPID key in your environment if needed.`);
     }
     setNotifSaving(false);
   };
@@ -232,8 +233,8 @@ export const FamilyView = () => {
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
           <div>
-            <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: '0.25rem' }}>Meal Planning Reminders</div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Get notified twice a day to input your meals.</div>
+            <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: '0.25rem' }}>What are we having for…?</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Get notified to plan your meals.</div>
           </div>
           <button
             onClick={handleTogglePush}
@@ -246,15 +247,11 @@ export const FamilyView = () => {
               border: pushEnabled ? '1px solid var(--accent-color)' : '1px solid var(--border-color)',
             }}
           >
-            {notifSaving ? '...' : pushEnabled ? 'Enabled' : 'Enable'}
+            {notifSaving ? '...' : pushEnabled ? 'Enabled' : 'Notify Me'}
           </button>
         </div>
-        {pushEnabled && (
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.03)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
-            <strong>Default Schedule:</strong><br />
-            • 8:30 AM: "今天吃什么？"<br />
-            • 8:30 PM: "明天吃什么？"
-          </div>
+        {pushEnabled && firebaseUser && (
+          <NotificationBuilder firebaseUser={firebaseUser} />
         )}
       </div>
 
