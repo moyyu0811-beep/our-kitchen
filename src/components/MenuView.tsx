@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../store';
-import { Plus, Trash2, Star, Heart, Clock } from 'lucide-react';
+import { Plus, Trash2, Star, Heart, Clock, CheckCircle } from 'lucide-react';
 
 const CATEGORY_META = {
   signature: { label: 'Signature', icon: <Star size={16} />, desc: 'Dishes we make all the time' },
@@ -132,6 +132,22 @@ export const MenuView = () => {
                       }}
                     >
                       <Star size={14} /> Signature
+                    </button>
+                  )}
+                  {/* Wishlist-only: move to History (Tried it!) */}
+                  {activeCategory === 'wishlist' && (
+                    <button
+                      onClick={() => updateMenuItem(item.id, { category: 'history' })}
+                      className="hover-lift"
+                      title="Mark as tried"
+                      style={{
+                        color: '#16a34a', padding: '0.5rem',
+                        border: '1px solid rgba(34,197,94,0.2)', borderRadius: 'var(--radius-md)',
+                        background: 'rgba(34,197,94,0.06)', display: 'flex', alignItems: 'center', gap: '0.3rem',
+                        fontSize: '0.75rem', fontWeight: 600,
+                      }}
+                    >
+                      <CheckCircle size={14} /> Tried
                     </button>
                   )}
                   <button

@@ -27,6 +27,7 @@ export const CalendarView = () => {
   const [coAssigneeBlock, setCoAssigneeBlock] = useState<{ dayIndex: number; meal: keyof DayMeals } | null>(null);
   const [customDish, setCustomDish] = useState('');
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const customInputRef = useRef<HTMLInputElement>(null);
 
   // Lock body scroll when any overlay is open
   useEffect(() => {
@@ -118,10 +119,12 @@ export const CalendarView = () => {
       const current = booking.recipeIds || [];
       updateMeal(weekKey, activeMenuBlock.dayIndex as keyof WeekData, activeMenuBlock.meal, { recipeIds: [...current, customId] });
       setCustomDish('');
+      // Blur input so iOS zooms back out
+      customInputRef.current?.blur();
     };
 
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
         onClick={() => setActiveMenuBlock(null)}>
         <div className="glass-panel" style={{ width: '100%', maxWidth: '350px', height: '100%', borderRadius: 'var(--radius-xl) 0 0 var(--radius-xl)', padding: '2rem', display: 'flex', flexDirection: 'column' }}
           onClick={e => e.stopPropagation()}>
@@ -130,12 +133,13 @@ export const CalendarView = () => {
             <button onClick={() => setActiveMenuBlock(null)} className="glass hover-lift" style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
           </div>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>Tap dishes to toggle — multiple selections allowed</p>
-          <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.25rem' }}>
+          <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.25rem', minHeight: 0 }}>
             {/* Customize: add a one-off dish */}
             <div style={{ marginBottom: '1.5rem' }}>
               <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customize</h4>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
+                  ref={customInputRef}
                   type="text" value={customDish}
                   onChange={e => setCustomDish(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addCustomDish()}
@@ -143,7 +147,8 @@ export const CalendarView = () => {
                   style={{
                     flex: 1, padding: '0.6rem 0.75rem', borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.6)',
-                    fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none'
+                    // 16px minimum prevents iOS Safari auto-zoom
+                    fontSize: '16px', fontFamily: 'inherit', outline: 'none'
                   }}
                 />
                 <button onClick={addCustomDish} className="hover-lift" style={{
@@ -176,22 +181,25 @@ export const CalendarView = () => {
             {menu.filter(m => m.category !== 'history').length === 0 && (
               <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>Go to Menu tab to add dishes!</div>
             )}
-            {/* Clear All — at the bottom */}
-            {selectedIds.length > 0 && (
+            {/* Bottom padding so content isn't hidden behind Clear All bar */}
+            {selectedIds.length > 0 && <div style={{ height: '3.5rem' }} />}
+          </div>
+          {/* Clear All — pinned above bottom nav, outside scroll area */}
+          {selectedIds.length > 0 && (
+            <div style={{ paddingTop: '0.75rem', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
               <button
                 onClick={() => updateMeal(weekKey, activeMenuBlock.dayIndex as keyof WeekData, activeMenuBlock.meal, { recipeIds: [] })}
                 className="hover-lift"
                 style={{
                   width: '100%', background: 'transparent', color: 'var(--text-muted)',
                   padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', textAlign: 'center',
-                  border: '1px dashed var(--border-color)', marginTop: '0.5rem', fontWeight: 500,
-                  fontSize: '0.9rem',
+                  border: '1px dashed var(--border-color)', fontWeight: 500, fontSize: '0.95rem',
                 }}
               >
                 Clear all dishes
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -202,7 +210,7 @@ export const CalendarView = () => {
     const booking = weekData[coAssigneeBlock.dayIndex as keyof WeekData]?.[coAssigneeBlock.meal] || { assigneeId: null };
     const current = booking.coAssigneeId;
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
         onClick={() => setCoAssigneeBlock(null)}>
         <div className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-xl)', minWidth: 260 }} onClick={e => e.stopPropagation()}>
           <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users size={20} /> Add Co-Chef</h3>
@@ -251,14 +259,16 @@ export const CalendarView = () => {
               return (
                 <div key={dayIndex}
                   className={`glass-panel active-scale ${booking.coAssigneeId ? 'gradient-cooked' : ''}`}
-                  style={{ ...style, height: 110, borderRadius: 'var(--radius-lg)', cursor: 'pointer', position: 'relative', display: 'flex', overflow: 'hidden' }}
+                 style={{ ...style, height: 110, borderRadius: 'var(--radius-lg)', cursor: 'pointer', position: 'relative', display: 'flex', overflow: 'hidden',
+                    userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
                   onMouseDown={() => startLongPress(dayIndex, meal)}
                   onMouseUp={cancelLongPress}
                   onTouchStart={() => startLongPress(dayIndex, meal)}
                   onTouchEnd={cancelLongPress}
                 >
                   {/* Left: chef */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0.5rem',
+                    userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
                     onClick={() => cycleAssignee(dayIndex, meal)}>
                     {booking.assigneeId === 'dine-out' ? (
                       <><span style={{ fontSize: '1.5rem' }}>👏</span><span style={{ fontSize: '0.7rem', fontWeight: 600 }}>Dine Out</span></>
@@ -294,30 +304,30 @@ export const CalendarView = () => {
   const renderMobileDayView = () => {
     const dayData = weekData[activeDayIndex as keyof WeekData];
     return (
-      <div style={{ padding: '0 1rem' }}>
+      <div style={{ padding: '0 0.5rem', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         {/* Date strip */}
-        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'none' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem', flexShrink: 0 }}>
           {days.map((day, i) => {
             const isToday = isCurrentWeek && i === todayDayIdx;
             const isActive = i === activeDayIndex;
             return (
               <button key={i} onClick={() => setActiveDayIndex(i)} style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-lg)', minWidth: 48, flexShrink: 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: '0.4rem 0', borderRadius: 'var(--radius-md)', flex: 1, margin: '0 0.1rem',
                 background: isActive ? 'var(--accent-color)' : isToday ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.5)',
                 color: isActive ? 'white' : isToday ? 'var(--accent-color)' : 'var(--text-primary)',
                 border: isToday && !isActive ? '1.5px solid var(--accent-color)' : '1px solid transparent',
                 fontWeight: 600, transition: 'all 0.2s'
               }}>
-                <span style={{ fontSize: '0.7rem' }}>{format(day, 'EEE')}</span>
-                <span style={{ fontSize: '1.3rem', lineHeight: 1.3 }}>{format(day, 'd')}</span>
+                <span style={{ fontSize: '0.65rem' }}>{format(day, 'EEE')}</span>
+                <span style={{ fontSize: '1.1rem', lineHeight: 1.2 }}>{format(day, 'd')}</span>
               </button>
             );
           })}
         </div>
 
         {/* Meal blocks */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', flex: 1, minHeight: 0 }}>
           {MEALS.map(meal => {
             const booking = dayData?.[meal] || { assigneeId: null, recipeIds: [] };
             const blockStyle = getBlockStyle(booking.assigneeId, booking.coAssigneeId);
@@ -326,32 +336,35 @@ export const CalendarView = () => {
             const recipeNames = (booking.recipeIds || []).map(id => menu.find(m => m.id === id)?.name).filter(Boolean);
             return (
               <div key={meal} className={`glass-panel ${booking.coAssigneeId ? 'gradient-cooked' : ''}`}
-                style={{ ...blockStyle, borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}
+                style={{ ...blockStyle, borderRadius: 'var(--radius-xl)', overflow: 'hidden',
+                  userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none',
+                  flex: '1 1 0', display: 'flex', flexDirection: 'column', minHeight: 0 } as React.CSSProperties}
                 onTouchStart={() => startLongPress(activeDayIndex, meal)}
                 onTouchEnd={cancelLongPress}
                 onMouseDown={() => startLongPress(activeDayIndex, meal)}
                 onMouseUp={cancelLongPress}
               >
-                <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(0,0,0,0.05)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid rgba(0,0,0,0.05)', fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
                   <span>{MEAL_EMOJIS[meal]}</span>{meal.charAt(0).toUpperCase() + meal.slice(1)}
                 </div>
-                <div style={{ display: 'flex', minHeight: 80 }}>
+                <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }}>
                   {/* Left: Chef */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', borderRight: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer' }}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', borderRight: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer',
+                    userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
                     onClick={() => cycleAssignee(activeDayIndex, meal)}>
                     {booking.assigneeId === 'dine-out' ? (
-                      <><span style={{ fontSize: '1.75rem' }}>👏</span><span style={{ fontSize: '0.75rem', fontWeight: 700 }}>Dine Out</span></>
+                      <><span style={{ fontSize: '1.5rem' }}>👏</span><span style={{ fontSize: '0.7rem', fontWeight: 700 }}>Dine Out</span></>
                     ) : user ? (
-                      <><span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{user.name}</span>{coUser && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 2 }}>+{coUser.name}</span>}</>
+                      <><span style={{ fontWeight: 700, fontSize: '1rem' }}>{user.name}</span>{coUser && <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: 2 }}>+{coUser.name}</span>}</>
                     ) : (
-                      <><Utensils size={24} opacity={0.15} /><span style={{ fontSize: '0.7rem', color: 'rgba(0,0,0,0.3)', marginTop: 4 }}>Tap to assign</span></>
+                      <><Utensils size={20} opacity={0.15} /><span style={{ fontSize: '0.65rem', color: 'rgba(0,0,0,0.3)', marginTop: 2 }}>Tap to assign</span></>
                     )}
                   </div>
                   {/* Right: Dish */}
-                  <div style={{ flex: 1.4, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'pointer' }}
+                  <div style={{ flex: 1.4, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', cursor: 'pointer', overflow: 'hidden' }}
                     onClick={() => setActiveMenuBlock({ dayIndex: activeDayIndex, meal })}>
                     {recipeNames.length > 0 ? (
-                      <span style={{ fontSize: '0.85rem', textAlign: 'center', fontWeight: 500 }}>{recipeNames.join(' · ')}</span>
+                      <span style={{ fontSize: '0.8rem', textAlign: 'center', fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{recipeNames.join(' · ')}</span>
                     ) : (
                       <span style={{ fontSize: '0.8rem', color: 'rgba(0,0,0,0.28)' }}>+ Add dish</span>
                     )}
@@ -366,19 +379,19 @@ export const CalendarView = () => {
   };
 
   return (
-    <div style={{ padding: '1rem 0' }}>
+    <div style={isMobile ? { display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 10.5rem - env(safe-area-inset-bottom, 0px))', padding: '0.5rem 0' } : { padding: '1rem 0' }}>
       {renderMenuDrawer()}
       {renderCoAssigneePopover()}
 
       {/* Week nav header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', padding: '0 1rem' }}>
-        <button onClick={() => setCurrentDate(d => subWeeks(d, 1))} className="glass hover-lift" style={{ padding: '0.5rem', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', padding: '0 1rem', flexShrink: 0 }}>
+        <button onClick={() => { setCurrentDate(d => subWeeks(d, 1)); setActiveDayIndex(6); }} className="glass hover-lift" style={{ padding: '0.5rem', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <ChevronLeft size={20} />
         </button>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>
           {format(monday, 'MMM d')} – {format(addDays(monday, 6), 'MMM d, yyyy')}
         </h2>
-        <button onClick={() => setCurrentDate(d => addWeeks(d, 1))} className="glass hover-lift" style={{ padding: '0.5rem', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={() => { setCurrentDate(d => addWeeks(d, 1)); setActiveDayIndex(0); }} className="glass hover-lift" style={{ padding: '0.5rem', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <ChevronRight size={20} />
         </button>
       </div>

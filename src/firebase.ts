@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getMessaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   projectId: "our-kitchen-bd036",
@@ -15,3 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence);
+
+export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;

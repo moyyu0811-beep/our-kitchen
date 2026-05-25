@@ -53,7 +53,7 @@ body {
   font-family: var(--font-family);
   background-color: var(--bg-base);
   color: var(--text-primary);
-  min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-image: 
@@ -65,7 +65,7 @@ body {
 #root {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Glassmorphism Utilities */

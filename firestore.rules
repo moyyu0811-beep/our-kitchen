@@ -7,9 +7,10 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Household registry — any authenticated user can read/write (needed for create/join)
+    // Household registry — publicly readable so join-code validation works before sign-in
     match /households/{householdId} {
-      allow read, write: if request.auth != null;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
     // Helper: get the caller's householdId from their auth_users doc

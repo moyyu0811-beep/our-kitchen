@@ -148,7 +148,7 @@ export const AuthPage = () => {
                 type="text"
                 value={joinCode}
                 onChange={e => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="e.g. BBB10X"
+                placeholder="e.g. GH7VD"
                 maxLength={6}
                 style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.2em', fontSize: '1.5rem', fontFamily: 'monospace', fontWeight: 700 }}
               />

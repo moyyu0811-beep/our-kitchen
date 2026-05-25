@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { useAuth } from '../auth';
 import type { User } from '../store';
-import { Plus, Trash2, Edit2, Copy, Check, LogOut } from 'lucide-react';
+import { Plus, Trash2, Edit2, Copy, Check, LogOut, Bell } from 'lucide-react';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getToken } from 'firebase/messaging';
+import { db, messaging } from '../firebase';
 
 const PREDEFINED_COLORS = [
   'var(--color-coral)', 'var(--color-sunflower)', 'var(--color-mint)',
@@ -18,6 +21,51 @@ export const FamilyView = () => {
   const [editColor, setEditColor] = useState('');
   const [codeCopied, setCodeCopied] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [notifSaving, setNotifSaving] = useState(false);
+
+  useEffect(() => {
+    if (firebaseUser) {
+      getDoc(doc(db, 'auth_users', firebaseUser.uid)).then(snap => {
+        if (snap.exists() && snap.data().fcmToken) {
+          setPushEnabled(true);
+        }
+      });
+    }
+  }, [firebaseUser]);
+
+  const handleTogglePush = async () => {
+    if (!messaging || !firebaseUser) return;
+    setNotifSaving(true);
+    try {
+      if (pushEnabled) {
+        await updateDoc(doc(db, 'auth_users', firebaseUser.uid), { fcmToken: null });
+        setPushEnabled(false);
+      } else {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          // Fallback vapidKey if env variable not provided, though it will fail without a valid key.
+          const token = await getToken(messaging, { vapidKey: import.meta.env.VITE_VAPID_KEY });
+          if (token) {
+            await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
+              fcmToken: token,
+              pushPrefs: {
+                morning: { time: '08:30', msg: '今天吃什么？' },
+                evening: { time: '20:30', msg: '明天吃什么？' }
+              }
+            });
+            setPushEnabled(true);
+          }
+        } else {
+          alert('Notification permission denied. Please enable them in your device settings.');
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to setup notifications. Are you running this as an installed PWA (Add to Home Screen)?');
+    }
+    setNotifSaving(false);
+  };
 
   const handleAdd = () => {
     const newUser: User = {
@@ -173,8 +221,41 @@ export const FamilyView = () => {
           </button>
         </div>
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
-          Share this code with your partner so they can join this household.
+          Share this code with any family member so they can join this household.
         </p>
+      </div>
+
+      {/* Notification Settings */}
+      <div className="glass-panel" style={{ padding: '1.5rem 2rem', maxWidth: '480px', margin: '0 auto 1.5rem' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Bell size={18} /> Notifications
+        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: '0.25rem' }}>Meal Planning Reminders</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Get notified twice a day to input your meals.</div>
+          </div>
+          <button
+            onClick={handleTogglePush}
+            disabled={notifSaving}
+            className="hover-lift active-scale"
+            style={{
+              padding: '0.5rem 1rem', borderRadius: 'var(--radius-xl)', fontWeight: 600,
+              background: pushEnabled ? 'var(--accent-color)' : 'rgba(0,0,0,0.05)',
+              color: pushEnabled ? 'white' : 'var(--text-primary)',
+              border: pushEnabled ? '1px solid var(--accent-color)' : '1px solid var(--border-color)',
+            }}
+          >
+            {notifSaving ? '...' : pushEnabled ? 'Enabled' : 'Enable'}
+          </button>
+        </div>
+        {pushEnabled && (
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.03)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
+            <strong>Default Schedule:</strong><br />
+            • 8:30 AM: "今天吃什么？"<br />
+            • 8:30 PM: "明天吃什么？"
+          </div>
+        )}
       </div>
 
       {/* Log out */}

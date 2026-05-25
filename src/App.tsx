@@ -59,7 +59,7 @@ const AppContent = () => {
         </div>
       </header>
 
-      <main style={{ flex: 1, paddingBottom: '3rem' }}>
+      <main style={{ flex: 1, paddingBottom: '3rem', display: 'flex', flexDirection: 'column' }}>
         <Routes>
           <Route path="/" element={<Navigate to="/calendar" replace />} />
           <Route path="/calendar" element={<CalendarView />} />
