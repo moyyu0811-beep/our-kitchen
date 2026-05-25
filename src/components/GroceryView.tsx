@@ -38,41 +38,33 @@ export const GroceryView = () => {
     setTimeout(() => checkOffGrocery(item), 500);
   };
 
-  const counts: Record<Tab, number> = {
-    shopping: groceryList.length,
-    inventory: inventory.length,
-    history: purchaseHistory.length,
-  };
-
   return (
     <div className="container" style={{ padding: '2rem 1.5rem' }}>
       <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '2rem', marginBottom: '1.25rem' }}>Our Grocery</h2>
 
         {/* Blog-style underline tabs with icons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'nowrap', maxWidth: '380px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'nowrap', maxWidth: '320px', margin: '0 auto' }}>
           {(Object.keys(TAB_META) as Tab[]).map(t => {
             const meta = TAB_META[t];
             const isActive = tab === t;
             return (
               <button key={t} onClick={() => setTab(t)} style={{
-                background: 'none', border: 'none', padding: '0 0 0.35rem 0',
+                background: 'none', border: 'none', padding: '0',
                 fontWeight: isActive ? 700 : 400,
                 fontSize: '0.9rem',
                 color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                borderBottom: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
                 cursor: 'pointer', transition: 'all 0.2s',
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 whiteSpace: 'nowrap',
               }}>
-                {meta.icon} {meta.label}
-                {counts[t] > 0 && (
-                  <span style={{
-                    background: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                    color: 'white', borderRadius: '999px',
-                    padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700,
-                  }}>{counts[t]}</span>
-                )}
+                <span style={{
+                  display: 'flex', alignItems: 'center', gap: '0.4rem',
+                  paddingBottom: '0.35rem',
+                  borderBottom: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
+                }}>
+                  {meta.icon} {meta.label}
+                </span>
               </button>
             );
           })}
@@ -172,7 +164,7 @@ export const GroceryView = () => {
                       fontWeight: 600, fontSize: '0.8rem',
                       border: '1px solid rgba(59,130,246,0.25)', flexShrink: 0,
                     }}>
-                      🥣 Used It Up
+                      🥣 Used Up
                     </button>
                   </div>
                 ))}

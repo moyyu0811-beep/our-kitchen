@@ -42,7 +42,7 @@ export const MenuView = () => {
         <h2 style={{ fontSize: '2rem', marginBottom: '1.25rem' }}>Our Menu</h2>
 
         {/* Blog-style underline tab nav with icons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'nowrap', maxWidth: '380px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'nowrap', maxWidth: '320px', margin: '0 auto' }}>
           {(Object.keys(CATEGORY_META) as Category[]).map(cat => {
             const meta = CATEGORY_META[cat];
             const isActive = activeCategory === cat;
@@ -51,17 +51,22 @@ export const MenuView = () => {
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 style={{
-                  background: 'none', border: 'none', padding: '0 0 0.35rem 0',
+                  background: 'none', border: 'none', padding: '0',
                   fontWeight: isActive ? 700 : 400,
                   fontSize: '0.9rem',
                   color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                  borderBottom: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
                   cursor: 'pointer', transition: 'all 0.2s',
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   whiteSpace: 'nowrap',
                 }}
               >
-                {meta.icon} {meta.label}
+                <span style={{
+                  display: 'flex', alignItems: 'center', gap: '0.4rem',
+                  paddingBottom: '0.35rem',
+                  borderBottom: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
+                }}>
+                  {meta.icon} {meta.label}
+                </span>
               </button>
             );
           })}
