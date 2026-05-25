@@ -394,8 +394,8 @@ export const StoreProvider = ({
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ fontSize: '2rem' }}>🍳</div>
-        <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Loading Kitchen…</div>
+        <div className="spinner"></div>
+        <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Loading...</div>
       </div>
     );
   }
