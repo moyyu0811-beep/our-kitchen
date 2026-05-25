@@ -47,7 +47,7 @@ export const GroceryView = () => {
         <h2 style={{ fontSize: '2rem', marginBottom: '1.25rem' }}>Our Grocery</h2>
 
         {/* Blog-style underline tabs with icons */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'nowrap', maxWidth: '380px', margin: '0 auto' }}>
           {(Object.keys(TAB_META) as Tab[]).map(t => {
             const meta = TAB_META[t];
             const isActive = tab === t;
@@ -59,7 +59,7 @@ export const GroceryView = () => {
                 color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
                 borderBottom: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
                 cursor: 'pointer', transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
                 whiteSpace: 'nowrap',
               }}>
                 {meta.icon} {meta.label}
