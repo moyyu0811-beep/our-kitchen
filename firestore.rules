@@ -13,52 +13,52 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Helper: get the caller's householdId from their auth_users doc
-    function getMyHouseholdId() {
-      return get(/databases/$(database)/documents/auth_users/$(request.auth.uid)).data.householdId;
+    // Helper: get the caller's households array from their auth_users doc
+    function getMyHouseholds() {
+      return get(/databases/$(database)/documents/auth_users/$(request.auth.uid)).data.households;
     }
 
     // All data collections: read/write only if authenticated and householdId matches
     match /menu/{docId} {
       allow read, write: if request.auth != null
-        && resource.data.householdId == getMyHouseholdId();
+        && resource.data.householdId in getMyHouseholds();
       allow create: if request.auth != null
-        && request.resource.data.householdId == getMyHouseholdId();
+        && request.resource.data.householdId in getMyHouseholds();
     }
 
     match /users/{docId} {
       allow read, write: if request.auth != null
-        && resource.data.householdId == getMyHouseholdId();
+        && resource.data.householdId in getMyHouseholds();
       allow create: if request.auth != null
-        && request.resource.data.householdId == getMyHouseholdId();
+        && request.resource.data.householdId in getMyHouseholds();
     }
 
     match /calendar/{docId} {
       allow read, write: if request.auth != null
-        && resource.data.householdId == getMyHouseholdId();
+        && resource.data.householdId in getMyHouseholds();
       allow create: if request.auth != null
-        && request.resource.data.householdId == getMyHouseholdId();
+        && request.resource.data.householdId in getMyHouseholds();
     }
 
     match /grocery_list/{docId} {
       allow read, write: if request.auth != null
-        && resource.data.householdId == getMyHouseholdId();
+        && resource.data.householdId in getMyHouseholds();
       allow create: if request.auth != null
-        && request.resource.data.householdId == getMyHouseholdId();
+        && request.resource.data.householdId in getMyHouseholds();
     }
 
     match /inventory/{docId} {
       allow read, write: if request.auth != null
-        && resource.data.householdId == getMyHouseholdId();
+        && resource.data.householdId in getMyHouseholds();
       allow create: if request.auth != null
-        && request.resource.data.householdId == getMyHouseholdId();
+        && request.resource.data.householdId in getMyHouseholds();
     }
 
     match /purchase_history/{docId} {
       allow read, write: if request.auth != null
-        && resource.data.householdId == getMyHouseholdId();
+        && resource.data.householdId in getMyHouseholds();
       allow create: if request.auth != null
-        && request.resource.data.householdId == getMyHouseholdId();
+        && request.resource.data.householdId in getMyHouseholds();
     }
   }
 }

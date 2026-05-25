@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { useAuth } from '../auth';
+import { useAuth, generateHouseholdId } from '../auth';
 import type { User } from '../store';
-import { Plus, Trash2, Edit2, Copy, Check, LogOut, Bell } from 'lucide-react';
+import { Plus, Trash2, Edit2, Copy, LogOut, Bell } from 'lucide-react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import { db, messaging } from '../firebase';
@@ -17,11 +17,10 @@ const PREDEFINED_COLORS = [
 
 export const FamilyView = () => {
   const { users, addUser, updateUser, removeUser } = useStore();
-  const { firebaseUser, householdId, signOut } = useAuth();
+  const { firebaseUser, activeHouseholdId, households, switchHousehold, leaveHousehold, createHousehold, joinHousehold, signOut } = useAuth();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
-  const [codeCopied, setCodeCopied] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
@@ -94,16 +93,58 @@ export const FamilyView = () => {
     }
   };
 
-  const copyCode = () => {
-    if (householdId) navigator.clipboard.writeText(householdId);
-    setCodeCopied(true);
-    setTimeout(() => setCodeCopied(false), 2000);
-  };
-
   const handleLogout = async () => {
     setLoggingOut(true);
     await signOut();
     setLoggingOut(false);
+  };
+
+  const handleSwitchHousehold = async (hid: string) => {
+    if (hid === activeHouseholdId) return;
+    if (window.confirm(`Switch to household ${hid}?`)) {
+      await switchHousehold(hid);
+    }
+  };
+
+  const handleLeaveHousehold = async (hid: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // prevent row click
+    if (households.length === 1) {
+      if (window.confirm(`WARNING: You are leaving your LAST household.\n\nIf you proceed, ALL data for this household will be PERMANENTLY DELETED, and you will need to set up a brand new household.\n\nType 'OK' if you are sure.`)) {
+        await leaveHousehold(hid);
+      }
+    } else {
+      if (window.confirm(`Are you sure you want to leave household ${hid}?\n\nIf you are the last member in it, ALL its data will be permanently deleted.`)) {
+        await leaveHousehold(hid);
+      }
+    }
+  };
+
+  const handleManageHouseholds = async () => {
+    if (households.length >= 3) {
+      alert("You can only be in up to 3 households at a time.");
+      return;
+    }
+    const action = window.prompt("Type 'CREATE' to create a new household, or 'JOIN' to join an existing one:");
+    if (!action) return;
+    
+    if (action.trim().toUpperCase() === 'CREATE') {
+      const newCode = generateHouseholdId();
+      try {
+        await createHousehold(newCode);
+        alert(`Created and switched to new household: ${newCode}`);
+      } catch (e: any) {
+        alert(e.message);
+      }
+    } else if (action.trim().toUpperCase() === 'JOIN') {
+      const code = window.prompt("Enter the 6-character household code:");
+      if (!code) return;
+      try {
+        await joinHousehold(code.toUpperCase());
+        alert(`Joined and switched to household: ${code.toUpperCase()}`);
+      } catch (e: any) {
+        alert(e.message);
+      }
+    }
   };
 
   return (
@@ -193,39 +234,63 @@ export const FamilyView = () => {
 
       {/* Household info card */}
       <div className="glass-panel" style={{ padding: '1.5rem 2rem', maxWidth: '480px', margin: '0 auto 1.5rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Your Household
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Your Households
+          </h3>
+          {households.length < 3 && (
+            <button onClick={handleManageHouseholds} className="hover-lift active-scale" style={{
+              background: 'rgba(59,130,246,0.1)', color: 'var(--accent-color)', padding: '0.4rem 0.8rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.8rem', border: 'none'
+            }}>
+              + Add
+            </button>
+          )}
+        </div>
 
         {firebaseUser && (
-          <div style={{ marginBottom: '0.75rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+          <div style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
             Signed in as <strong style={{ color: 'var(--text-primary)' }}>{firebaseUser.email}</strong>
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Household Code</div>
-            <span style={{
-              fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.15em',
-              color: 'var(--accent-color)'
-            }}>
-              {householdId}
-            </span>
-          </div>
-          <button onClick={copyCode} className="hover-lift" style={{
-            padding: '0.6rem 0.9rem', borderRadius: 'var(--radius-md)',
-            background: codeCopied ? 'rgba(34,197,94,0.1)' : 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
-            color: codeCopied ? '#16a34a' : 'var(--text-primary)',
-            display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, fontSize: '0.85rem',
-            transition: 'all 0.2s',
-          }}>
-            {codeCopied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy</>}
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {households.map(hid => (
+            <div key={hid}
+              onClick={() => handleSwitchHousehold(hid)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0.75rem 1rem', borderRadius: 'var(--radius-lg)',
+                border: hid === activeHouseholdId ? '2px solid var(--accent-color)' : '1px solid var(--border-color)',
+                background: hid === activeHouseholdId ? 'rgba(59,130,246,0.05)' : 'transparent',
+                cursor: hid === activeHouseholdId ? 'default' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.15em', color: hid === activeHouseholdId ? 'var(--accent-color)' : 'var(--text-primary)' }}>
+                  {hid}
+                </span>
+                {hid === activeHouseholdId && (
+                  <span style={{ fontSize: '0.7rem', background: 'var(--accent-color)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '99px', fontWeight: 700 }}>ACTIVE</span>
+                )}
+              </div>
+              
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {hid === activeHouseholdId && (
+                  <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(hid); alert('Copied!'); }} className="hover-lift" style={{ padding: '0.5rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)' }}>
+                    <Copy size={16} />
+                  </button>
+                )}
+                <button onClick={(e) => handleLeaveHousehold(hid, e)} className="hover-lift" style={{ padding: '0.5rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', color: '#ef4444' }}>
+                  <LogOut size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
-          Share this code with any family member so they can join this household.
+        
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+          Tap a code to switch households. Share the active code with family to let them join. Max 3 households.
         </p>
       </div>
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { UtensilsCrossed, Eye, EyeOff, Copy, Check } from 'lucide-react';
-import { useAuth, generateHouseholdId, householdExists, createHousehold } from '../auth';
+import { useAuth, generateHouseholdId, householdExistsDb, createHouseholdDb } from '../auth';
 
 type Screen = 'login' | 'signup' | 'household';
 
@@ -50,7 +50,7 @@ export const AuthPage = () => {
     setError('');
     try {
       await signUp(pendingCreds.email, pendingCreds.password, newCode);
-      await createHousehold(newCode);
+      await createHouseholdDb(newCode);
     } catch (err: unknown) {
       setError(friendlyError(err));
     } finally {
@@ -65,7 +65,7 @@ export const AuthPage = () => {
     setLoading(true);
     setError('');
     try {
-      const exists = await householdExists(code);
+      const exists = await householdExistsDb(code);
       if (!exists) { setError('Household code not found. Check the code and try again.'); setLoading(false); return; }
       await signUp(pendingCreds.email, pendingCreds.password, code);
     } catch (err: unknown) {

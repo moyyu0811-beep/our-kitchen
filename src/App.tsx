@@ -17,7 +17,7 @@ const NAV_ITEMS = [
 ];
 
 const AppContent = () => {
-  const { firebaseUser, householdId, authLoading } = useAuth();
+  const { firebaseUser, activeHouseholdId, authLoading } = useAuth();
 
   // Show nothing while checking auth state
   if (authLoading) {
@@ -30,13 +30,13 @@ const AppContent = () => {
   }
 
   // Not logged in → show auth page
-  if (!firebaseUser || !householdId) {
+  if (!firebaseUser || !activeHouseholdId) {
     return <AuthPage />;
   }
 
   // Logged in → show main app inside StoreProvider scoped to household
   return (
-    <StoreProvider householdId={householdId}>
+    <StoreProvider householdId={activeHouseholdId}>
       <RolloverPrompt />
       <header className="glass" style={{ position: 'sticky', top: 0, zIndex: 40, padding: '1rem 0' }}>
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

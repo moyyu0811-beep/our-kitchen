@@ -7,18 +7,23 @@ import {
   signOut as firebaseSignOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type AuthContextType = {
   firebaseUser: FirebaseUser | null;
-  householdId: string | null;
+  households: string[];
+  activeHouseholdId: string | null;
   authLoading: boolean;
   signUp: (email: string, password: string, householdId: string) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<string>; // returns householdId
+  signIn: (email: string, password: string) => Promise<string>; // returns activeHouseholdId
   signOut: () => Promise<void>;
+  switchHousehold: (hid: string) => Promise<void>;
+  joinHousehold: (hid: string) => Promise<void>;
+  createHousehold: (hid: string) => Promise<void>;
+  leaveHousehold: (hid: string) => Promise<void>;
 };
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -29,23 +34,40 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [householdId, setHouseholdId] = useState<string | null>(null);
+  const [households, setHouseholds] = useState<string[]>([]);
+  const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {
-        // Load householdId from Firestore user doc
-        const userDoc = await getDoc(doc(db, 'auth_users', user.uid));
+        const userRef = doc(db, 'auth_users', user.uid);
+        const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
-          setHouseholdId(userDoc.data().householdId as string);
+          const data = userDoc.data();
+          let userHouseholds = data.households || [];
+          let userActive = data.activeHouseholdId || null;
+
+          // Seamless migration for old 1-to-1 users
+          if (!data.households && data.householdId) {
+            userHouseholds = [data.householdId];
+            userActive = data.householdId;
+            await updateDoc(userRef, {
+              households: userHouseholds,
+              activeHouseholdId: userActive,
+            });
+          }
+
+          setHouseholds(userHouseholds);
+          setActiveHouseholdId(userActive);
         } else {
-          // Shouldn't happen, but fallback
-          setHouseholdId(null);
+          setHouseholds([]);
+          setActiveHouseholdId(null);
         }
       } else {
-        setHouseholdId(null);
+        setHouseholds([]);
+        setActiveHouseholdId(null);
       }
       setAuthLoading(false);
     });
@@ -56,28 +78,97 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await setDoc(doc(db, 'auth_users', cred.user.uid), {
       email,
-      householdId: hid,
+      households: [hid],
+      activeHouseholdId: hid,
       createdAt: Date.now(),
     });
-    setHouseholdId(hid);
+    setHouseholds([hid]);
+    setActiveHouseholdId(hid);
   };
 
   const signIn = async (email: string, password: string): Promise<string> => {
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const userDoc = await getDoc(doc(db, 'auth_users', cred.user.uid));
-    const hid = userDoc.exists() ? (userDoc.data().householdId as string) : '';
-    setHouseholdId(hid);
-    return hid;
+    const data = userDoc.exists() ? userDoc.data() : null;
+    const active = data?.activeHouseholdId || data?.householdId || '';
+    const hids = data?.households || (active ? [active] : []);
+    setHouseholds(hids);
+    setActiveHouseholdId(active);
+    return active;
   };
 
   const signOut = async () => {
     await firebaseSignOut(auth);
     setFirebaseUser(null);
-    setHouseholdId(null);
+    setHouseholds([]);
+    setActiveHouseholdId(null);
+  };
+
+  const switchHousehold = async (hid: string) => {
+    if (!firebaseUser || !households.includes(hid)) return;
+    await updateDoc(doc(db, 'auth_users', firebaseUser.uid), { activeHouseholdId: hid });
+    setActiveHouseholdId(hid);
+  };
+
+  const joinHousehold = async (hid: string) => {
+    if (!firebaseUser) return;
+    if (households.length >= 3) throw new Error('You can only join up to 3 households.');
+    if (households.includes(hid)) throw new Error('You are already in this household.');
+    
+    const exists = await householdExistsDb(hid);
+    if (!exists) throw new Error('Household code not found.');
+
+    await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
+      households: arrayUnion(hid),
+      activeHouseholdId: hid,
+    });
+    setHouseholds([...households, hid]);
+    setActiveHouseholdId(hid);
+  };
+
+  const createHousehold = async (hid: string) => {
+    if (!firebaseUser) return;
+    if (households.length >= 3) throw new Error('You can only create up to 3 households.');
+    
+    await createHouseholdDb(hid);
+    await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
+      households: arrayUnion(hid),
+      activeHouseholdId: hid,
+    });
+    setHouseholds([...households, hid]);
+    setActiveHouseholdId(hid);
+  };
+
+  const leaveHousehold = async (hid: string) => {
+    if (!firebaseUser) return;
+
+    // Check if user is the absolute last member of this household
+    const usersSnap = await getDocs(query(collection(db, 'auth_users'), where('households', 'array-contains', hid)));
+    const isLastMember = usersSnap.size <= 1;
+
+    // If last member, delete all household data
+    if (isLastMember) {
+      await deleteHouseholdData(hid);
+      await deleteDoc(doc(db, 'households', hid));
+    }
+
+    const newHouseholds = households.filter(h => h !== hid);
+    const newActive = newHouseholds.length > 0 ? newHouseholds[0] : null;
+
+    await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
+      households: arrayRemove(hid),
+      activeHouseholdId: newActive,
+    });
+
+    setHouseholds(newHouseholds);
+    setActiveHouseholdId(newActive);
   };
 
   return (
-    <AuthContext.Provider value={{ firebaseUser, householdId, authLoading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{
+      firebaseUser, households, activeHouseholdId, authLoading,
+      signUp, signIn, signOut, switchHousehold, joinHousehold, createHousehold, leaveHousehold
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -100,13 +191,31 @@ export const generateHouseholdId = (): string => {
   return id;
 };
 
-// ── Check if household exists ─────────────────────────────────────────────────
+// ── DB Helpers ────────────────────────────────────────────────────────────────
 
-export const householdExists = async (hid: string): Promise<boolean> => {
+export const householdExistsDb = async (hid: string): Promise<boolean> => {
   const snap = await getDoc(doc(db, 'households', hid));
   return snap.exists();
 };
 
-export const createHousehold = async (hid: string) => {
+export const createHouseholdDb = async (hid: string) => {
   await setDoc(doc(db, 'households', hid), { createdAt: Date.now() });
+};
+
+const deleteHouseholdData = async (hid: string) => {
+  const collections = ['menu', 'grocery_list', 'inventory', 'purchase_history', 'calendar', 'users'];
+  const batch = writeBatch(db);
+  let count = 0;
+
+  for (const coll of collections) {
+    const snap = await getDocs(query(collection(db, coll), where('householdId', '==', hid)));
+    snap.docs.forEach(d => {
+      batch.delete(d.ref);
+      count++;
+    });
+  }
+
+  if (count > 0) {
+    await batch.commit();
+  }
 };
