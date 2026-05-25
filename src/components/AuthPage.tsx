@@ -49,8 +49,8 @@ export const AuthPage = () => {
     setLoading(true);
     setError('');
     try {
-      await createHousehold(newCode);
       await signUp(pendingCreds.email, pendingCreds.password, newCode);
+      await createHousehold(newCode);
     } catch (err: unknown) {
       setError(friendlyError(err));
     } finally {
