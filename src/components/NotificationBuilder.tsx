@@ -128,7 +128,7 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
   return (
     <div style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.03)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
       <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-        Your Schedules
+        Heads-ups
         {saving && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Saving...</span>}
       </h4>
       
@@ -177,13 +177,13 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
               value={rule.message}
               onChange={(e) => updateRule(rule.id, { message: e.target.value })}
               placeholder="Notification text..."
-              style={{ padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', width: '100%', fontSize: '0.9rem' }}
+              style={{ padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', width: '100%', fontSize: '16px' }}
             />
           </div>
         ))}
 
         <button onClick={addRule} className="hover-lift" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem', background: 'var(--bg-card)', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-sm)', fontWeight: 600, color: 'var(--text-secondary)' }}>
-          <Plus size={16} /> Add Schedule
+          <Plus size={16} /> Add Heads-up
         </button>
       </div>
     </div>
