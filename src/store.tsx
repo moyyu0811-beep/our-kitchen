@@ -179,8 +179,9 @@ export const StoreProvider = ({
 
   // ── Firestore listeners (scoped to householdId) ───────────────────────────
   useEffect(() => {
-    let inits = 0;
-    const checkInit = () => { inits++; if (inits >= 6) setLoading(false); };
+    let usersLoaded = false;
+    let calLoaded = false;
+    const checkInit = () => { if (usersLoaded && calLoaded) setLoading(false); };
 
     const hq = (coll: string) => query(collection(db, coll), where('householdId', '==', householdId));
 
@@ -195,16 +196,16 @@ export const StoreProvider = ({
       } else {
         setState(s => ({ ...s, users: snap.docs.map(d => d.data() as User) }));
       }
+      usersLoaded = true;
       checkInit();
-    }, () => checkInit());
+    }, () => { usersLoaded = true; checkInit(); });
 
     const unsubMenu = onSnapshot(hq('menu'), snap => {
       const menu = snap.docs
         .map(d => d.data() as MenuItem)
         .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
       setState(s => ({ ...s, menu }));
-      checkInit();
-    }, () => checkInit());
+    }, () => {});
 
     const unsubCal = onSnapshot(
       query(collection(db, 'calendar'), where('householdId', '==', householdId)),
@@ -216,9 +217,10 @@ export const StoreProvider = ({
           calendar[rawKey] = migrateWeekData(d.data() as Record<string, unknown>);
         });
         setState(s => ({ ...s, calendar }));
+        calLoaded = true;
         checkInit();
       },
-      () => checkInit()
+      () => { calLoaded = true; checkInit(); }
     );
 
     const unsubGrocery = onSnapshot(hq('grocery_list'), snap => {
@@ -226,24 +228,21 @@ export const StoreProvider = ({
         .map(d => ({ id: d.id, ...d.data() } as GroceryItem))
         .sort((a, b) => b.addedAt - a.addedAt);
       setState(s => ({ ...s, groceryList }));
-      checkInit();
-    }, () => checkInit());
+    }, () => {});
 
     const unsubInventory = onSnapshot(hq('inventory'), snap => {
       const inventory = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as InventoryItem))
         .sort((a, b) => b.purchasedAt - a.purchasedAt);
       setState(s => ({ ...s, inventory }));
-      checkInit();
-    }, () => checkInit());
+    }, () => {});
 
     const unsubHistory = onSnapshot(hq('purchase_history'), snap => {
       const purchaseHistory = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as PurchaseHistoryItem))
         .sort((a, b) => b.ranOutAt - a.ranOutAt);
       setState(s => ({ ...s, purchaseHistory }));
-      checkInit();
-    }, () => checkInit());
+    }, () => {});
 
     return () => {
       unsubUsers(); unsubMenu(); unsubCal();
