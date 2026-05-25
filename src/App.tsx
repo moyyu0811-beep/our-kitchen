@@ -24,7 +24,7 @@ const AppContent = () => {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
         <div className="spinner"></div>
-        <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Loading...</div>
+        <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>🍳 Into Our Kitchen...</div>
       </div>
     );
   }
