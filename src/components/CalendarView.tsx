@@ -36,6 +36,32 @@ export const CalendarView = () => {
     return () => document.body.classList.remove('scroll-locked');
   }, [activeMenuBlock, coAssigneeBlock]);
 
+  const getActiveDayForWeek = useCallback((wData: WeekData | undefined, fallbackDay: number) => {
+    if (!wData) return fallbackDay;
+    for (let i = 6; i >= 0; i--) {
+      const day = wData[i as keyof WeekData];
+      if (day) {
+        const hasMeal = (m: any) => m.assigneeId || (m.recipeIds && m.recipeIds.length > 0);
+        if (hasMeal(day.breakfast) || hasMeal(day.lunch) || hasMeal(day.dinner)) {
+          return i;
+        }
+      }
+    }
+    return fallbackDay;
+  }, []);
+
+  const handlePrevWeek = () => {
+    const prevWeek = subWeeks(currentDate, 1);
+    setCurrentDate(prevWeek);
+    setActiveDayIndex(getActiveDayForWeek(calendar[getWeekKey(prevWeek)], 6));
+  };
+
+  const handleNextWeek = () => {
+    const nextWeek = addWeeks(currentDate, 1);
+    setCurrentDate(nextWeek);
+    setActiveDayIndex(getActiveDayForWeek(calendar[getWeekKey(nextWeek)], 0));
+  };
+
   const weekKey = getWeekKey(currentDate);
   const weekData = calendar[weekKey] || {
     0: { breakfast: { assigneeId: null, recipeIds: [] }, lunch: { assigneeId: null, recipeIds: [] }, dinner: { assigneeId: null, recipeIds: [] } },
@@ -385,13 +411,13 @@ export const CalendarView = () => {
 
       {/* Week nav header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', padding: '0 1rem', flexShrink: 0 }}>
-        <button onClick={() => { setCurrentDate(d => subWeeks(d, 1)); setActiveDayIndex(6); }} className="glass hover-lift" style={{ padding: '0.5rem', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={handlePrevWeek} className="glass hover-lift" style={{ padding: '0.5rem', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <ChevronLeft size={20} />
         </button>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>
           {format(monday, 'MMM d')} – {format(addDays(monday, 6), 'MMM d, yyyy')}
         </h2>
-        <button onClick={() => { setCurrentDate(d => addWeeks(d, 1)); setActiveDayIndex(0); }} className="glass hover-lift" style={{ padding: '0.5rem', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={handleNextWeek} className="glass hover-lift" style={{ padding: '0.5rem', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <ChevronRight size={20} />
         </button>
       </div>

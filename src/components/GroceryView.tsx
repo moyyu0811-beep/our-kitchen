@@ -44,7 +44,7 @@ export const GroceryView = () => {
   return (
     <div className="container" style={{ padding: '2rem 1.5rem' }}>
       <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '2rem', marginBottom: '1.25rem' }}>Grocery</h2>
+        <h2 style={{ fontSize: '2rem', marginBottom: '1.25rem' }}>Our Grocery</h2>
 
         {/* Blog-style underline tabs with icons */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'nowrap' }}>
