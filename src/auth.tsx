@@ -153,7 +153,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const newHouseholds = households.filter(h => h !== hid);
-    const newActive = newHouseholds.length > 0 ? newHouseholds[0] : null;
+    
+    // If leaving last and ONLY household -> Delete user account entirely
+    if (newHouseholds.length === 0) {
+      await deleteDoc(doc(db, 'auth_users', firebaseUser.uid));
+      await firebaseUser.delete();
+      setFirebaseUser(null);
+      setHouseholds([]);
+      setActiveHouseholdId(null);
+      return;
+    }
+
+    const newActive = newHouseholds[0];
 
     await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
       households: arrayRemove(hid),

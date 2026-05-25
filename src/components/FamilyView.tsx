@@ -22,6 +22,7 @@ export const FamilyView = () => {
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showAddMenu, setShowAddMenu] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
 
@@ -109,8 +110,16 @@ export const FamilyView = () => {
   const handleLeaveHousehold = async (hid: string, e: React.MouseEvent) => {
     e.stopPropagation(); // prevent row click
     if (households.length === 1) {
-      if (window.confirm(`WARNING: You are leaving your LAST household.\n\nIf you proceed, ALL data for this household will be PERMANENTLY DELETED, and you will need to set up a brand new household.\n\nType 'OK' if you are sure.`)) {
-        await leaveHousehold(hid);
+      if (window.confirm(`WARNING: You are leaving your LAST household.\n\nIf you proceed, your account will be DELETED, and you will need to sign up again.\n\nType 'OK' if you are sure.`)) {
+        try {
+          await leaveHousehold(hid);
+        } catch (err: any) {
+          if (err.message.includes('requires-recent-login')) {
+            alert('For security reasons, please log out and log back in before deleting your account.');
+          } else {
+            alert(err.message);
+          }
+        }
       }
     } else {
       if (window.confirm(`Are you sure you want to leave household ${hid}?\n\nIf you are the last member in it, ALL its data will be permanently deleted.`)) {
@@ -119,31 +128,26 @@ export const FamilyView = () => {
     }
   };
 
-  const handleManageHouseholds = async () => {
-    if (households.length >= 3) {
-      alert("You can only be in up to 3 households at a time.");
-      return;
+  const handleCreateNew = async () => {
+    const newCode = generateHouseholdId();
+    try {
+      await createHousehold(newCode);
+      alert(`Created and switched to new household: ${newCode}`);
+      setShowAddMenu(false);
+    } catch (e: any) {
+      alert(e.message);
     }
-    const action = window.prompt("Type 'CREATE' to create a new household, or 'JOIN' to join an existing one:");
-    if (!action) return;
-    
-    if (action.trim().toUpperCase() === 'CREATE') {
-      const newCode = generateHouseholdId();
-      try {
-        await createHousehold(newCode);
-        alert(`Created and switched to new household: ${newCode}`);
-      } catch (e: any) {
-        alert(e.message);
-      }
-    } else if (action.trim().toUpperCase() === 'JOIN') {
-      const code = window.prompt("Enter the 6-character household code:");
-      if (!code) return;
-      try {
-        await joinHousehold(code.toUpperCase());
-        alert(`Joined and switched to household: ${code.toUpperCase()}`);
-      } catch (e: any) {
-        alert(e.message);
-      }
+  };
+
+  const handleJoinExisting = async () => {
+    const code = window.prompt("Enter the 6-character household code:");
+    if (!code) return;
+    try {
+      await joinHousehold(code.toUpperCase());
+      alert(`Joined and switched to household: ${code.toUpperCase()}`);
+      setShowAddMenu(false);
+    } catch (e: any) {
+      alert(e.message);
     }
   };
 
@@ -238,14 +242,34 @@ export const FamilyView = () => {
           <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Your Households
           </h3>
-          {households.length < 3 && (
-            <button onClick={handleManageHouseholds} className="hover-lift active-scale" style={{
+          {households.length < 3 && !showAddMenu && (
+            <button onClick={() => setShowAddMenu(true)} className="hover-lift active-scale" style={{
               background: 'rgba(59,130,246,0.1)', color: 'var(--accent-color)', padding: '0.4rem 0.8rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.8rem', border: 'none'
             }}>
               + Add
             </button>
           )}
         </div>
+
+        {showAddMenu && (
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', background: 'var(--bg-body)', padding: '0.5rem', borderRadius: 'var(--radius-lg)' }}>
+            <button onClick={handleCreateNew} className="hover-lift active-scale" style={{
+              flex: 1, background: 'var(--accent-color)', color: 'white', border: 'none', padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.85rem'
+            }}>
+              Create New
+            </button>
+            <button onClick={handleJoinExisting} className="hover-lift active-scale" style={{
+              flex: 1, background: '#8b5cf6', color: 'white', border: 'none', padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.85rem'
+            }}>
+              Join Existing
+            </button>
+            <button onClick={() => setShowAddMenu(false)} className="hover-lift" style={{
+              background: 'transparent', color: 'var(--text-muted)', border: 'none', padding: '0.5rem', fontWeight: 600, fontSize: '0.85rem'
+            }}>
+              Cancel
+            </button>
+          </div>
+        )}
 
         {firebaseUser && (
           <div style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
