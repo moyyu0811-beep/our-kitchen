@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import type { GroceryItem, InventoryItem } from '../store';
-import { ShoppingCart, Package, History, Plus, Trash2 } from 'lucide-react';
+import { ShoppingCart, Package, Clock, Plus, Trash2 } from 'lucide-react';
+import { useScrollRestoration } from '../useScrollRestoration';
 import { format } from 'date-fns';
 
 type Tab = 'shopping' | 'inventory' | 'history';
@@ -9,7 +10,7 @@ type Tab = 'shopping' | 'inventory' | 'history';
 const TAB_META = {
   shopping:  { label: 'Shopping',  icon: <ShoppingCart size={16} />, desc: 'What We Need To Buy' },
   inventory: { label: 'Inventory', icon: <Package size={16} />,      desc: 'Items We Have At Home' },
-  history:   { label: 'History',   icon: <History size={16} />,      desc: 'Everything We\'ve Run Out Of' },
+  history:   { label: 'History',   icon: <Clock size={16} />,      desc: 'Everything We\'ve Run Out Of' },
 } as const;
 
 export const GroceryView = () => {
@@ -21,6 +22,8 @@ export const GroceryView = () => {
   const [tab, setTab] = useState<Tab>('shopping');
   const [input, setInput] = useState('');
   const [checking, setChecking] = useState<Set<string>>(new Set());
+
+  useScrollRestoration('grocery');
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,7 +204,7 @@ export const GroceryView = () => {
                     display: 'flex', alignItems: 'center', gap: '1rem',
                     padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)',
                   }}>
-                    <History size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                    <Clock size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 500 }}>{item.name}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>

@@ -7,6 +7,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import { db, messaging } from '../firebase';
 import { NotificationBuilder } from './NotificationBuilder';
+import { useScrollRestoration } from '../useScrollRestoration';
 
 const PREDEFINED_COLORS = [
   'var(--color-coral)', 'var(--color-sunflower)', 'var(--color-mint)',
@@ -24,6 +25,8 @@ export const FamilyView = () => {
   const [loggingOut, setLoggingOut] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
+
+  useScrollRestoration('family');
 
   useEffect(() => {
     if (firebaseUser) {

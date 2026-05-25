@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { Plus, Trash2, Star, Heart, Clock, CheckCircle } from 'lucide-react';
+import { useScrollRestoration } from '../useScrollRestoration';
 
 const CATEGORY_META = {
   signature: { label: 'Signature', icon: <Star size={16} />, desc: 'Dishes We Make All The Time' },
@@ -14,6 +15,8 @@ export const MenuView = () => {
   const { menu, addMenuItem, updateMenuItem, removeMenuItem } = useStore();
   const [newItemName, setNewItemName] = useState('');
   const [activeCategory, setActiveCategory] = useState<Category>('signature');
+
+  useScrollRestoration('menu');
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();

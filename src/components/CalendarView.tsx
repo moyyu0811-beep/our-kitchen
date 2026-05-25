@@ -3,6 +3,7 @@ import { useStore, getWeekKey } from '../store';
 import type { WeekData, DayMeals } from '../store';
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
 import { ChevronLeft, ChevronRight, Utensils, Users } from 'lucide-react';
+import { useScrollRestoration } from '../useScrollRestoration';
 
 const MEALS: (keyof DayMeals)[] = ['breakfast', 'lunch', 'dinner'];
 const MEAL_EMOJIS: Record<string, string> = { breakfast: '☀️', lunch: '🌤️', dinner: '🌙' };
@@ -28,6 +29,8 @@ export const CalendarView = () => {
   const [customDish, setCustomDish] = useState('');
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
+
+  useScrollRestoration('calendar');
 
   // Lock body scroll when any overlay is open
   useEffect(() => {
