@@ -3,9 +3,9 @@ import { useStore } from '../store';
 import { Plus, Trash2, Star, Heart, Clock, CheckCircle } from 'lucide-react';
 
 const CATEGORY_META = {
-  signature: { label: 'Signature', icon: <Star size={16} />, desc: 'Dishes we make all the time' },
-  wishlist:  { label: 'Wishlist',  icon: <Heart size={16} />, desc: 'Dishes we want to try' },
-  history:   { label: 'History',  icon: <Clock size={16} />, desc: 'Dishes cooked in the past' },
+  signature: { label: 'Signature', icon: <Star size={16} />, desc: 'Dishes We Make All The Time' },
+  wishlist:  { label: 'Wishlist',  icon: <Heart size={16} />, desc: 'Dishes We Want To Try' },
+  history:   { label: 'History',  icon: <Clock size={16} />, desc: 'Dishes Cooked In The Past' },
 } as const;
 
 type Category = keyof typeof CATEGORY_META;
@@ -50,7 +50,7 @@ export const MenuView = () => {
                 style={{
                   background: 'none', border: 'none', padding: '0 0 0.35rem 0',
                   fontWeight: isActive ? 700 : 400,
-                  fontSize: '1rem',
+                  fontSize: '0.9rem',
                   color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
                   borderBottom: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
                   cursor: 'pointer', transition: 'all 0.2s',
@@ -65,7 +65,7 @@ export const MenuView = () => {
         </div>
 
         {/* Description below tabs */}
-        <p style={{ marginTop: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+        <p style={{ marginTop: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
           {CATEGORY_META[activeCategory].desc}
         </p>
       </div>
@@ -78,7 +78,7 @@ export const MenuView = () => {
               type="text"
               value={newItemName}
               onChange={e => setNewItemName(e.target.value)}
-              placeholder={`Add to ${activeCategory}…`}
+              placeholder={`Add To ${activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)}…`}
               style={{
                 flex: 1, padding: '1rem', borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.5)',
@@ -103,8 +103,8 @@ export const MenuView = () => {
           {currentItems.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
               {activeCategory === 'history'
-                ? 'Dishes you cook will appear here automatically.'
-                : 'No dishes in this category yet.'}
+                ? 'Dishes You Cook Will Appear Here Automatically.'
+                : 'No Dishes In This Category Yet.'}
             </div>
           ) : (
             currentItems.map(item => (
@@ -123,7 +123,7 @@ export const MenuView = () => {
                     <button
                       onClick={() => moveToSignature(item.id)}
                       className="hover-lift"
-                      title="Add to Signature"
+                      title="Add To Signature"
                       style={{
                         color: 'var(--accent-color)', padding: '0.5rem',
                         border: '1px solid rgba(59,130,246,0.2)', borderRadius: 'var(--radius-md)',
@@ -139,7 +139,7 @@ export const MenuView = () => {
                     <button
                       onClick={() => updateMenuItem(item.id, { category: 'history' })}
                       className="hover-lift"
-                      title="Mark as tried"
+                      title="Mark As Tried"
                       style={{
                         color: '#16a34a', padding: '0.5rem',
                         border: '1px solid rgba(34,197,94,0.2)', borderRadius: 'var(--radius-md)',

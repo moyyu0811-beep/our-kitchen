@@ -7,9 +7,9 @@ import { format } from 'date-fns';
 type Tab = 'shopping' | 'inventory' | 'history';
 
 const TAB_META = {
-  shopping:  { label: 'Shopping',  icon: <ShoppingCart size={16} />, desc: 'What we need to buy' },
-  inventory: { label: 'Inventory', icon: <Package size={16} />,      desc: 'Items we have at home' },
-  history:   { label: 'History',   icon: <History size={16} />,      desc: 'Everything we\'ve run out of' },
+  shopping:  { label: 'Shopping',  icon: <ShoppingCart size={16} />, desc: 'What We Need To Buy' },
+  inventory: { label: 'Inventory', icon: <Package size={16} />,      desc: 'Items We Have At Home' },
+  history:   { label: 'History',   icon: <History size={16} />,      desc: 'Everything We\'ve Run Out Of' },
 } as const;
 
 export const GroceryView = () => {
@@ -55,7 +55,7 @@ export const GroceryView = () => {
               <button key={t} onClick={() => setTab(t)} style={{
                 background: 'none', border: 'none', padding: '0 0 0.35rem 0',
                 fontWeight: isActive ? 700 : 400,
-                fontSize: '1rem',
+                fontSize: '0.9rem',
                 color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
                 borderBottom: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
                 cursor: 'pointer', transition: 'all 0.2s',
@@ -76,7 +76,7 @@ export const GroceryView = () => {
         </div>
 
         {/* Description below tabs */}
-        <p style={{ marginTop: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+        <p style={{ marginTop: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
           {TAB_META[tab].desc}
         </p>
       </div>
@@ -89,7 +89,7 @@ export const GroceryView = () => {
             <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <input
                 type="text" value={input} onChange={e => setInput(e.target.value)}
-                placeholder="Add item to shopping list…"
+                placeholder="Add Item To Shopping List…"
                 style={{
                   flex: 1, padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.5)',
@@ -105,7 +105,7 @@ export const GroceryView = () => {
 
             {groceryList.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
-                Your shopping list is empty. Add something!
+                Your Shopping List Is Empty. Add Something!
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -145,7 +145,7 @@ export const GroceryView = () => {
           <>
             {inventory.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
-                No items yet. Check off items from your shopping list!
+                No Items Yet. Check Off Items From Your Shopping List!
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -169,7 +169,7 @@ export const GroceryView = () => {
                       fontWeight: 600, fontSize: '0.8rem',
                       border: '1px solid rgba(59,130,246,0.25)', flexShrink: 0,
                     }}>
-                      🥣 Used it up
+                      🥣 Used It Up
                     </button>
                   </div>
                 ))}
@@ -187,12 +187,12 @@ export const GroceryView = () => {
                 <button onClick={clearPurchaseHistory} className="hover-lift" style={{
                   fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.3rem 0.6rem',
                   border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', flexShrink: 0,
-                }}>Clear all</button>
+                }}>Clear All</button>
               )}
             </div>
             {purchaseHistory.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
-                No purchase history yet.
+                No Purchase History Yet.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
