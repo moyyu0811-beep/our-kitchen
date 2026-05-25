@@ -74,12 +74,15 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
             updateDoc(doc(db, 'auth_users', firebaseUser.uid), { 'pushPrefs.rules': migrated });
           }
         } else if (!oldPrefs) {
-          // Default start
           const r1 = { id: 'r1', type: 'daily' as const, localTime: '08:30', message: '今天吃什么？', ...localToUTC(undefined, '08:30') };
           const r2 = { id: 'r2', type: 'daily' as const, localTime: '20:30', message: '明天吃什么？', ...localToUTC(undefined, '20:30') };
           setRules([r1, r2]);
+          updateDoc(doc(db, 'auth_users', firebaseUser.uid), { 'pushPrefs.rules': [r1, r2] }).catch(console.error);
         }
       }
+      setLoading(false);
+    }).catch(e => {
+      console.error("Failed to load rules:", e);
       setLoading(false);
     });
   }, [firebaseUser]);
