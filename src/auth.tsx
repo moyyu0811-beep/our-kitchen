@@ -7,7 +7,7 @@ import {
   signOut as firebaseSignOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -118,6 +118,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const exists = await householdExistsDb(hid);
     if (!exists) throw new Error('Household code not found.');
 
+    // Increment member count
+    await updateDoc(doc(db, 'households', hid), { memberCount: increment(1) });
     await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
       households: arrayUnion(hid),
       activeHouseholdId: hid,
@@ -130,6 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!firebaseUser) return;
     if (households.length >= 3) throw new Error('You can only create up to 3 households.');
     
+    // Create household doc with memberCount = 1
     await createHouseholdDb(hid);
     await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
       households: arrayUnion(hid),
@@ -142,18 +145,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const leaveHousehold = async (hid: string) => {
     if (!firebaseUser) return;
 
-    // Check if user is the absolute last member of this household
-    const usersSnap = await getDocs(query(collection(db, 'auth_users'), where('households', 'array-contains', hid)));
-    const isLastMember = usersSnap.size <= 1;
+    const newHouseholds = households.filter(h => h !== hid);
 
-    // If last member, delete all household data
+    // Decrement memberCount on the household doc
+    const householdRef = doc(db, 'households', hid);
+    const householdSnap = await getDoc(householdRef);
+    const currentCount = householdSnap.exists() ? (householdSnap.data().memberCount ?? 1) : 1;
+    const newCount = currentCount - 1;
+    const isLastMember = newCount <= 0;
+
     if (isLastMember) {
+      // Delete all household data since we're the last one
       await deleteHouseholdData(hid);
-      await deleteDoc(doc(db, 'households', hid));
+      await deleteDoc(householdRef);
+    } else {
+      await updateDoc(householdRef, { memberCount: newCount });
     }
 
-    const newHouseholds = households.filter(h => h !== hid);
-    
     // If leaving last and ONLY household -> Delete user account entirely
     if (newHouseholds.length === 0) {
       await deleteDoc(doc(db, 'auth_users', firebaseUser.uid));
@@ -164,13 +172,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Leaving one of multiple households — update Firestore then state
     const newActive = newHouseholds[0];
-
     await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
       households: arrayRemove(hid),
       activeHouseholdId: newActive,
     });
-
     setHouseholds(newHouseholds);
     setActiveHouseholdId(newActive);
   };
@@ -210,7 +217,7 @@ export const householdExistsDb = async (hid: string): Promise<boolean> => {
 };
 
 export const createHouseholdDb = async (hid: string) => {
-  await setDoc(doc(db, 'households', hid), { createdAt: Date.now() });
+  await setDoc(doc(db, 'households', hid), { createdAt: Date.now(), memberCount: 1 });
 };
 
 const deleteHouseholdData = async (hid: string) => {
