@@ -6,24 +6,23 @@ on:
     - cron: '*/30 * * * *'
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+          node-version: '20'
 
-      - name: Install dependencies
-        run: npm install firebase-admin
+      - name: Install firebase-admin
+        run: npm install --no-save firebase-admin@12
 
       - name: Process Notifications
         env:
