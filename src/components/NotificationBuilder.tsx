@@ -92,19 +92,23 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
     setSaving(true);
     setSaveError('');
     try {
-      await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
-        'pushPrefs.rules': newRules
-      });
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Save timed out — check your connection.')), 8000)
+      );
+      await Promise.race([
+        updateDoc(doc(db, 'auth_users', firebaseUser.uid), { 'pushPrefs.rules': newRules }),
+        timeout
+      ]);
       setRules(newRules);
     } catch (e: any) {
       console.error('Failed to save rules:', e);
-      setSaveError('Could not save. Please try again.');
+      setSaveError(e.message || 'Could not save. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
-  const addRule = () => {
+  const addRule = async () => {
     const newRule: NotificationRule = {
       id: Math.random().toString(36).substring(7),
       type: 'daily',
@@ -112,7 +116,7 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
       message: 'Time to plan!',
       ...localToUTC(undefined, '09:00')
     };
-    saveRules([...rules, newRule]);
+    await saveRules([...rules, newRule]);
   };
 
   const removeRule = (id: string) => {
