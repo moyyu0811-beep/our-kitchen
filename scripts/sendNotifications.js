@@ -1,4 +1,6 @@
+const admin = require('firebase-admin');
 console.log('[1] Script started. Node version:', process.version);
+
 
 let serviceAccount;
 try {
