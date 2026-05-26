@@ -147,39 +147,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const newHouseholds = households.filter(h => h !== hid);
 
-    // Decrement memberCount on the household doc
-    const householdRef = doc(db, 'households', hid);
-    const householdSnap = await getDoc(householdRef);
-    const currentCount = householdSnap.exists() ? (householdSnap.data().memberCount ?? 1) : 1;
-    const newCount = currentCount - 1;
-    const isLastMember = newCount <= 0;
-
-    if (isLastMember) {
-      // Delete all household data since we're the last one
-      await deleteHouseholdData(hid);
-      await deleteDoc(householdRef);
-    } else {
-      await updateDoc(householdRef, { memberCount: newCount });
-    }
-
-    // If leaving last and ONLY household -> Delete user account entirely
+    // ── Optimistic UI update first — always happens regardless of backend ──
     if (newHouseholds.length === 0) {
-      await deleteDoc(doc(db, 'auth_users', firebaseUser.uid));
-      await firebaseUser.delete();
+      // Leaving last household: sign out immediately then clean up
       setFirebaseUser(null);
       setHouseholds([]);
       setActiveHouseholdId(null);
+
+      // Backend cleanup (best effort)
+      try {
+        const householdRef = doc(db, 'households', hid);
+        const householdSnap = await getDoc(householdRef);
+        const currentCount = householdSnap.exists() ? (householdSnap.data().memberCount ?? 1) : 1;
+        if (currentCount <= 1) {
+          await deleteHouseholdData(hid);
+          await deleteDoc(householdRef);
+        } else {
+          await updateDoc(householdRef, { memberCount: currentCount - 1 });
+        }
+        await deleteDoc(doc(db, 'auth_users', firebaseUser.uid));
+        await firebaseUser.delete();
+      } catch (_) { /* best effort — user is already signed out in UI */ }
       return;
     }
 
-    // Leaving one of multiple households — update Firestore then state
+    // Leaving one of multiple households — UI first, backend second
     const newActive = newHouseholds[0];
+    setHouseholds(newHouseholds);
+    setActiveHouseholdId(newActive);
+
+    // Backend: update auth_users doc
     await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
       households: arrayRemove(hid),
       activeHouseholdId: newActive,
     });
-    setHouseholds(newHouseholds);
-    setActiveHouseholdId(newActive);
+
+    // Backend: decrement or delete household data (best effort)
+    try {
+      const householdRef = doc(db, 'households', hid);
+      const householdSnap = await getDoc(householdRef);
+      const currentCount = householdSnap.exists() ? (householdSnap.data().memberCount ?? 1) : 1;
+      const newCount = currentCount - 1;
+      if (newCount <= 0) {
+        await deleteHouseholdData(hid);
+        await deleteDoc(householdRef);
+      } else {
+        await updateDoc(householdRef, { memberCount: newCount });
+      }
+    } catch (_) { /* best effort cleanup */ }
   };
 
   return (
