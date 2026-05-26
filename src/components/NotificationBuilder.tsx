@@ -51,6 +51,7 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
   const [rules, setRules] = useState<NotificationRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     getDoc(doc(db, 'auth_users', firebaseUser.uid)).then(snap => {
@@ -89,11 +90,18 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
 
   const saveRules = async (newRules: NotificationRule[]) => {
     setSaving(true);
-    await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
-      'pushPrefs.rules': newRules
-    });
-    setRules(newRules);
-    setSaving(false);
+    setSaveError('');
+    try {
+      await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
+        'pushPrefs.rules': newRules
+      });
+      setRules(newRules);
+    } catch (e: any) {
+      console.error('Failed to save rules:', e);
+      setSaveError('Could not save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addRule = () => {
@@ -127,10 +135,11 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
 
   return (
     <div style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.03)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-      <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+      <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
         Heads-ups
         {saving && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Saving...</span>}
       </h4>
+      {saveError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '0.5rem' }}>{saveError}</p>}
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {rules.map(rule => (
