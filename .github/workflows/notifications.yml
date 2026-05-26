@@ -27,4 +27,4 @@ jobs:
       - name: Process Notifications
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: node scripts/sendNotifications.js
+        run: node scripts/sendNotifications.cjs
