@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Trash2, Plus } from 'lucide-react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { User as FirebaseUser } from 'firebase/auth';
 
@@ -72,13 +72,13 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
           }
           if (migrated.length > 0) {
             setRules(migrated);
-            updateDoc(doc(db, 'auth_users', firebaseUser.uid), { 'pushPrefs.rules': migrated });
+            setDoc(doc(db, 'auth_users', firebaseUser.uid), { pushPrefs: { rules: migrated } }, { merge: true }).catch(console.error);
           }
         } else if (!oldPrefs) {
           const r1 = { id: 'r1', type: 'daily' as const, localTime: '08:30', message: '今天吃什么？', ...localToUTC(undefined, '08:30') };
           const r2 = { id: 'r2', type: 'daily' as const, localTime: '20:30', message: '明天吃什么？', ...localToUTC(undefined, '20:30') };
           setRules([r1, r2]);
-          updateDoc(doc(db, 'auth_users', firebaseUser.uid), { 'pushPrefs.rules': [r1, r2] }).catch(console.error);
+          setDoc(doc(db, 'auth_users', firebaseUser.uid), { pushPrefs: { rules: [r1, r2] } }, { merge: true }).catch(console.error);
         }
       }
       setLoading(false);
@@ -96,13 +96,14 @@ export const NotificationBuilder = ({ firebaseUser }: { firebaseUser: FirebaseUs
         setTimeout(() => reject(new Error('Save timed out — check your connection.')), 8000)
       );
       await Promise.race([
-        updateDoc(doc(db, 'auth_users', firebaseUser.uid), { 'pushPrefs.rules': newRules }),
+        setDoc(doc(db, 'auth_users', firebaseUser.uid), { pushPrefs: { rules: newRules } }, { merge: true }),
         timeout
       ]);
       setRules(newRules);
     } catch (e: any) {
-      console.error('Failed to save rules:', e);
-      setSaveError(e.message || 'Could not save. Please try again.');
+      const msg = e?.message || e?.code || JSON.stringify(e) || 'Unknown error';
+      console.error('Failed to save rules. Code:', e?.code, 'Message:', e?.message, e);
+      setSaveError(`Could not save: ${msg}`);
     } finally {
       setSaving(false);
     }
