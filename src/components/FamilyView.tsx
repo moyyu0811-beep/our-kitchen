@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { useAuth, generateHouseholdId } from '../auth';
 import type { User } from '../store';
 import { Plus, Trash2, Edit2, Copy, LogOut, Bell } from 'lucide-react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import { db, messaging } from '../firebase';
 import { NotificationBuilder } from './NotificationBuilder';
@@ -43,30 +43,39 @@ export const FamilyView = () => {
     setNotifSaving(true);
     try {
       if (pushEnabled) {
-        await updateDoc(doc(db, 'auth_users', firebaseUser.uid), { fcmToken: null });
+        // Disable: remove FCM token
+        await setDoc(doc(db, 'auth_users', firebaseUser.uid), { fcmToken: null }, { merge: true });
         setPushEnabled(false);
       } else {
+        // Enable: request permission → get token → save
         const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          // Explicitly register the SW for Firebase at the correct path
-          const swReg = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}firebase-messaging-sw.js`);
-          const token = await getToken(messaging, { 
-            serviceWorkerRegistration: swReg,
-            vapidKey: import.meta.env.VITE_VAPID_KEY 
-          });
-          if (token) {
-            await updateDoc(doc(db, 'auth_users', firebaseUser.uid), {
-              fcmToken: token
-            });
-            setPushEnabled(true);
-          }
-        } else {
-          alert('Notification permission denied. Please enable them in your device settings.');
+        if (permission !== 'granted') {
+          alert('Notification permission denied. Please enable it in your device settings, then try again.');
+          return;
         }
+
+        const swReg = await navigator.serviceWorker.register(
+          `${import.meta.env.BASE_URL}firebase-messaging-sw.js`
+        );
+        // Wait for SW to be active
+        await navigator.serviceWorker.ready;
+
+        const token = await getToken(messaging, {
+          serviceWorkerRegistration: swReg,
+          vapidKey: import.meta.env.VITE_VAPID_KEY,
+        });
+
+        if (!token) {
+          alert('Could not get a notification token. Make sure you have added this app to your Home Screen and that notifications are allowed in Settings.');
+          return;
+        }
+
+        await setDoc(doc(db, 'auth_users', firebaseUser.uid), { fcmToken: token }, { merge: true });
+        setPushEnabled(true);
       }
     } catch (e: any) {
-      console.error(e);
-      alert(`Failed to setup notifications: ${e.message}\nMake sure you are running this as an installed PWA (Add to Home Screen) and have provided a VAPID key in your environment if needed.`);
+      console.error('Push toggle failed:', e);
+      alert(`Could not set up notifications: ${e?.message ?? e?.code ?? e}`);
     }
     setNotifSaving(false);
   };
