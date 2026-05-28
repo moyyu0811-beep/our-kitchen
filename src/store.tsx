@@ -186,8 +186,8 @@ export const StoreProvider = ({
     const hq = (coll: string) => query(collection(db, coll), where('householdId', '==', householdId));
 
     const DEFAULT_USERS: User[] = [
-      { id: `${householdId}_1`, name: 'Moy', color: 'var(--color-coral)', householdId },
-      { id: `${householdId}_2`, name: 'Baibai', color: 'var(--color-sky)', householdId },
+      { id: `${householdId}_1`, name: '[example] Moy', color: 'var(--color-coral)', householdId },
+      { id: `${householdId}_2`, name: '[example] Baibai', color: 'var(--color-sky)', householdId },
     ];
 
     const unsubUsers = onSnapshot(hq('users'), snap => {

@@ -81,24 +81,25 @@ export const MenuView = () => {
       <div className="glass-panel" style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
         {/* Add form — hidden for History */}
         {activeCategory !== 'history' && (
-          <form onSubmit={handleAdd} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+          <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', alignItems: 'stretch' }}>
             <input
               type="text"
               value={newItemName}
               onChange={e => setNewItemName(e.target.value)}
               placeholder={`Add To ${activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)}…`}
               style={{
-                flex: 1, padding: '1rem', borderRadius: 'var(--radius-md)',
+                flex: 1, height: '3.2rem', padding: '0 1rem', borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.5)',
-                fontSize: '1.1rem', fontFamily: 'inherit', outline: 'none',
+                fontSize: '1.1rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
               }}
             />
             <button
               type="submit"
               className="hover-lift active-scale"
               style={{
+                width: '3.2rem', height: '3.2rem', flexShrink: 0,
                 background: 'var(--accent-color)', color: 'white',
-                padding: '0 1.5rem', borderRadius: 'var(--radius-md)',
+                borderRadius: 'var(--radius-md)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >

@@ -81,20 +81,21 @@ export const GroceryView = () => {
         {/* ── Shopping List ── */}
         {tab === 'shopping' && (
           <>
-            <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', alignItems: 'stretch' }}>
               <input
                 type="text" value={input} onChange={e => setInput(e.target.value)}
                 placeholder="Add Item To Shopping List…"
                 style={{
-                  flex: 1, padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)',
+                  flex: 1, height: '3rem', padding: '0 1rem', borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.5)',
-                  fontSize: '1rem', fontFamily: 'inherit', outline: 'none',
+                  fontSize: '1rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
                 }}
               />
               <button type="submit" className="hover-lift active-scale" style={{
+                width: '3rem', height: '3rem', flexShrink: 0,
                 background: 'var(--accent-color)', color: 'white',
-                padding: '0 1.25rem', borderRadius: 'var(--radius-md)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                borderRadius: 'var(--radius-md)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}><Plus size={22} /></button>
             </form>
 

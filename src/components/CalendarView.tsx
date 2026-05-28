@@ -27,6 +27,7 @@ export const CalendarView = () => {
   const [activeMenuBlock, setActiveMenuBlock] = useState<{ dayIndex: number; meal: keyof DayMeals } | null>(null);
   const [coAssigneeBlock, setCoAssigneeBlock] = useState<{ dayIndex: number; meal: keyof DayMeals } | null>(null);
   const [customDish, setCustomDish] = useState('');
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,24 +134,27 @@ export const CalendarView = () => {
     if (!activeMenuBlock) return null;
     const booking = weekData[activeMenuBlock.dayIndex as keyof WeekData]?.[activeMenuBlock.meal] || { assigneeId: null, recipeIds: [] };
     const selectedIds = booking.recipeIds || [];
-    // Only show signature & wishlist (not history)
     const sections = [
-      { key: 'signature', label: 'Signature', items: menu.filter(m => m.category === 'signature') },
-      { key: 'wishlist', label: 'Wishlist', items: menu.filter(m => m.category === 'wishlist') },
+      { key: 'signature', label: '⭐ Signature', items: menu.filter(m => m.category === 'signature') },
+      { key: 'wishlist',  label: '💛 Wishlist',  items: menu.filter(m => m.category === 'wishlist') },
     ];
+
+    const toggleSection = (key: string) =>
+      setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
 
     const addCustomDish = () => {
       if (!customDish.trim() || !activeMenuBlock) return;
       const customId = `custom-${Date.now()}`;
-      // Custom dishes go straight to history — they're one-offs
       const newItem = { id: customId, name: customDish.trim(), category: 'history' as const };
       addMenuItem(newItem);
       const current = booking.recipeIds || [];
       updateMeal(weekKey, activeMenuBlock.dayIndex as keyof WeekData, activeMenuBlock.meal, { recipeIds: [...current, customId] });
       setCustomDish('');
-      // Blur input so iOS zooms back out
       customInputRef.current?.blur();
     };
+
+    // Height of the custom input for matching the + button
+    const inputH = '2.2rem';
 
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
@@ -166,7 +170,7 @@ export const CalendarView = () => {
             {/* Customize: add a one-off dish */}
             <div style={{ marginBottom: '1.5rem' }}>
               <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customize</h4>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
                 <input
                   ref={customInputRef}
                   type="text" value={customDish}
@@ -174,43 +178,66 @@ export const CalendarView = () => {
                   onKeyDown={e => e.key === 'Enter' && addCustomDish()}
                   placeholder="Type any dish name…"
                   style={{
-                    flex: 1, padding: '0.6rem 0.75rem', borderRadius: 'var(--radius-md)',
+                    flex: 1, height: inputH, padding: '0 0.75rem', borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.6)',
-                    // 16px minimum prevents iOS Safari auto-zoom
-                    fontSize: '16px', fontFamily: 'inherit', outline: 'none'
+                    fontSize: '16px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
                   }}
                 />
                 <button onClick={addCustomDish} className="hover-lift" style={{
-                  padding: '0.6rem 0.9rem', borderRadius: 'var(--radius-md)',
-                  background: 'var(--accent-color)', color: 'white', fontWeight: 700, flexShrink: 0
+                  width: inputH, height: inputH, borderRadius: 'var(--radius-md)', flexShrink: 0,
+                  background: 'var(--accent-color)', color: 'white', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem',
                 }}>+</button>
               </div>
             </div>
-            {sections.map(({ key, label, items }) => items.length > 0 && (
-              <div key={key} style={{ marginBottom: '1.5rem' }}>
-                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  {items.map(item => {
-                    const sel = selectedIds.includes(item.id);
-                    return (
-                      <button key={item.id} onClick={() => toggleRecipe(item.id)} className="hover-lift active-scale" style={{
-                        background: sel ? 'var(--accent-color)' : 'rgba(255,255,255,0.7)',
-                        color: sel ? 'white' : 'var(--text-primary)',
-                        padding: '0.7rem 1rem', borderRadius: 'var(--radius-md)', textAlign: 'left',
-                        border: sel ? '1px solid var(--accent-color)' : '1px solid var(--border-color)', fontWeight: 500,
-                        display: 'flex', alignItems: 'center', gap: '0.5rem'
-                      }}>
-                        <span style={{ fontSize: '1rem' }}>{sel ? '✓' : '○'}</span> {item.name}
-                      </button>
-                    );
-                  })}
+
+            {/* Foldable Signature & Wishlist sections */}
+            {sections.map(({ key, label, items }) => {
+              const collapsed = !!collapsedSections[key];
+              return (
+                <div key={key} style={{ marginBottom: '1.25rem' }}>
+                  {/* Section header — always visible, tappable to fold */}
+                  <button
+                    onClick={() => toggleSection(key)}
+                    style={{
+                      width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      background: 'none', border: 'none', padding: '0.3rem 0', cursor: 'pointer',
+                      marginBottom: collapsed ? 0 : '0.5rem',
+                    }}
+                  >
+                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                      {label}
+                      <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', opacity: 0.6 }}>
+                        ({items.length})
+                      </span>
+                    </h4>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', transition: 'transform 0.2s', display: 'inline-block', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>▾</span>
+                  </button>
+
+                  {/* Items — hidden when collapsed */}
+                  {!collapsed && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {items.length === 0 ? (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.4rem 0.5rem' }}>No dishes yet — add some in the Menu tab!</div>
+                      ) : items.map(item => {
+                        const sel = selectedIds.includes(item.id);
+                        return (
+                          <button key={item.id} onClick={() => toggleRecipe(item.id)} className="hover-lift active-scale" style={{
+                            background: sel ? 'var(--accent-color)' : 'rgba(255,255,255,0.7)',
+                            color: sel ? 'white' : 'var(--text-primary)',
+                            padding: '0.7rem 1rem', borderRadius: 'var(--radius-md)', textAlign: 'left',
+                            border: sel ? '1px solid var(--accent-color)' : '1px solid var(--border-color)', fontWeight: 500,
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                          }}>
+                            <span style={{ fontSize: '1rem' }}>{sel ? '✓' : '○'}</span> {item.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
-            {menu.filter(m => m.category !== 'history').length === 0 && (
-              <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>Go to Menu tab to add dishes!</div>
-            )}
-            {/* Bottom padding so content isn't hidden behind Clear All bar */}
+              );
+            })}
             {selectedIds.length > 0 && <div style={{ height: '3.5rem' }} />}
           </div>
           {/* Clear All — pinned above bottom nav, outside scroll area */}
